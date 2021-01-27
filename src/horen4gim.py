@@ -1,14 +1,14 @@
 
 import gitlab
-from settings import GITLAB_URL, GITLAB_ACCESS_TOKEN, GITLAB_PROJECT_ID, GITLAB_GROUP_ID
+import configparser
 from ics import Calendar, Event
 
 
-def connect_to_gitlab(url, token):
+def connect_to_gitlab():
     """
     personal access token authentication
     """
-    gl = gitlab.Gitlab(url, token, ssl_verify=True)
+    gl = gitlab.Gitlab.from_config("dlr", config_files="../gitlab-config.ini")
     gl.auth()
     return gl
 
@@ -29,19 +29,20 @@ def get_group(gl, group_id):
     return instance
 
 
-def get_issues_from_instance(combined_cal, c, instance, name):
+def get_events_from_issues(project):
     """
-    gets the terminated issues from a project or group and creates events with them
+    gets the terminated issues from a project and creates events with them
     """
-    counter = 0
-    for issue in instance.issues.list(all=True, state='opened'):
+    events = set()
+    for issue in project.issues.list(all=True, state='opened'):
         if issue.due_date is not None:
-            create_event(combined_cal, c, issue, name)
-            counter += 1
-    return counter, name
+            event = create_event(issue, project.name)
+            events.add(event)
+
+    return events
 
 
-def create_event(combined_cal, c, issue, name):
+def create_event(issue, name):
     """
     creates a new event and adds it to the calendar object
     """
@@ -51,18 +52,20 @@ def create_event(combined_cal, c, issue, name):
     e.description = issue.description
     e.location = issue.web_url
     e.make_all_day()
-    c.events.add(e)
-    combined_cal.events.add(e)
     print(" TITLE: ", issue.title, "\tDUE_DATE: ", issue.due_date)
+    return e
 
 
-def fill_calendar(combined_cal, instance):
-    """
-    fills the calendar through given issues from a specific project or group
-    """
-    cal = create_calendar()
-    issue_counter, file_name = get_issues_from_instance(combined_cal, cal, instance, instance.name)
-    write_calendar_file(issue_counter, file_name, cal)
+def write_calendar(calendar, file_name):
+    with open(file_name, 'w') as f:
+        f.writelines(calendar)
+    print("Successful creation of the file named \"" + file_name + ".ics\".")
+
+
+def write_calendars(calendars):
+    for calendar, name in calendars:
+        write_calendar(calendar, name + '.ics')
+    pass
 
 
 def create_calendar():
@@ -71,19 +74,6 @@ def create_calendar():
     """
     c = Calendar()
     return c
-
-
-def write_calendar_file(issue_counter, name, cal):
-    """
-    writes all events into a calendar file
-    """
-    if issue_counter != 0:
-        with open('events/' + name + '.ics', 'w') as my_file:
-            my_file.writelines(cal)
-        print("Successful creation of the file named \"" + name + ".ics\".")
-
-    else:
-        print("There are no opened issues with a due date in the project.")
 
 
 def write_combined_cal(combined_cal):
@@ -96,22 +86,28 @@ def write_combined_cal(combined_cal):
 
 
 def menu():
-    gl = connect_to_gitlab(GITLAB_URL, GITLAB_ACCESS_TOKEN)
+
+    gl = connect_to_gitlab()
+    config = configparser.ConfigParser()
+    config.read('../gitlab-config.ini')
+    gitlab_project_id = config.get('horen4gim', 'GITLAB_PROJECT_ID')
+    ids = [int(pid) for pid in gitlab_project_id.split(',')]
+    path = config.get('horen4gim', 'PATH')
+    calendars = []
 
     # decision, from which project or group the data is going to be taken and put in the calendar-file
-    if GITLAB_PROJECT_ID or GITLAB_GROUP_ID != []:
-        combined_cal = create_calendar()
-        if GITLAB_PROJECT_ID:
-            for project_id in GITLAB_PROJECT_ID:
-                instance = get_project(gl, project_id)
-                fill_calendar(combined_cal, instance)
-        if GITLAB_GROUP_ID:
-            for group_id in GITLAB_GROUP_ID:
-                instance = get_group(gl, group_id)
-                fill_calendar(combined_cal, instance)
-        write_combined_cal(combined_cal)
+    if ids:
+        for project_id in ids:
+            project = get_project(gl, project_id)
+            cal = create_calendar()
+            issue_events = get_events_from_issues(project)
+            cal.events.update(issue_events)
+            calendars.append((cal, path + project.name))
+
     else:
         print("No project or group selected")
+        exit(1)
+    write_calendars(calendars)
 
 
 if __name__ == "__main__":
