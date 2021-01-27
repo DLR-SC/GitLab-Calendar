@@ -1,0 +1,4 @@
+# run: pip install -r requirements.txt
+python-gitlab >= 2.5.0
+ics >= 0.7
+pytest >= 6.2.0
