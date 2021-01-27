@@ -1,4 +1,6 @@
 __pycache__/
 .idea/
-settings.py
 events/
+gitlab-config.ini
+.pytest_cache/
+test/
