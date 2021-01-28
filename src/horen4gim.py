@@ -1,6 +1,11 @@
+"""
+Extension for GitLab, that generates ics-files from a repositories issues,
+ milestones and iterations, which have a due date.
+"""
 
-import gitlab
 import configparser
+import sys
+import gitlab
 from ics import Calendar, Event
 
 
@@ -8,24 +13,24 @@ def connect_to_gitlab():
     """
     personal access token authentication
     """
-    gl = gitlab.Gitlab.from_config("dlr", config_files="../gitlab-config.ini")
-    gl.auth()
-    return gl
+    gila = gitlab.Gitlab.from_config("dlr", config_files="../gitlab-config.ini")
+    gila.auth()
+    return gila
 
 
-def get_project(gl, project_id):
+def get_project(gila, project_id):
     """
     returns a specific project from a given ID
     """
-    instance = gl.projects.get(project_id)
+    instance = gila.projects.get(project_id)
     return instance
 
 
-def get_group(gl, group_id):
+def get_group(gila, group_id):
     """
     returns a specific group from a given ID
     """
-    instance = gl.groups.get(group_id)
+    instance = gila.groups.get(group_id)
     return instance
 
 
@@ -38,42 +43,67 @@ def get_events_from_issues(project):
         if issue.due_date is not None:
             event = create_event(issue, project.name)
             events.add(event)
-
     return events
 
 
-def create_event(issue, name):
+def get_events_from_milestones(project):
+    """
+    gets milestones from a project and creates events with them
+    """
+    events = set()
+    for milestone in project.milestones.list(all=True, state='active'):
+        event = create_event(milestone, project.name)
+        events.add(event)
+    return events
+
+
+def create_event(todo, name):
     """
     creates a new event and adds it to the calendar object
     """
-    e = Event()
-    e.name = '[' + name + '] ' + issue.title + ' (' + str(issue.iid) + ')'
-    e.begin = issue.due_date
-    e.description = issue.description
-    e.location = issue.web_url
-    e.make_all_day()
-    print(" TITLE: ", issue.title, "\tDUE_DATE: ", issue.due_date)
-    return e
+    event = Event()
+    event.name = '[' + name + '] ' + todo.title + ' (' + str(todo.iid) + ')'
+
+    # decision whether the todos are milestones or a issues
+    if isinstance(todo, gitlab.v4.objects.ProjectIssue):
+        event.begin = todo.due_date
+        event.categories.add("WIRKLICH WICHTIG")
+    elif isinstance(todo, gitlab.v4.objects.ProjectMilestone):
+        event.begin = todo.start_date
+        event.end = todo.due_date
+        event.categories.add("Graue Kategorie")
+    event.description = todo.description
+    event.location = todo.web_url
+
+    event.make_all_day()
+    print(" TITLE: ", todo.title, "\tDUE_DATE: ", todo.due_date)
+    return event
 
 
 def write_calendar(calendar, file_name):
-    with open(file_name, 'w') as f:
-        f.writelines(calendar)
-    print("Successful creation of the file named \"" + file_name + ".ics\".")
+    """
+    writes a calendar-file from a given calendar object
+    """
+
+    with open(file_name, 'w', encoding='utf-8') as file:
+        file.writelines(calendar)
+    print("Successful creation of the file named \"" + file_name + "\".")
 
 
 def write_calendars(calendars):
+    """
+    calls the "write_calendar" function for each given project
+    """
     for calendar, name in calendars:
         write_calendar(calendar, name + '.ics')
-    pass
 
 
 def create_calendar():
     """
     creates the calendar object
     """
-    c = Calendar()
-    return c
+    cal = Calendar()
+    return cal
 
 
 def write_combined_cal(combined_cal):
@@ -86,8 +116,10 @@ def write_combined_cal(combined_cal):
 
 
 def menu():
-
-    gl = connect_to_gitlab()
+    """
+    central function of the program
+    """
+    gila = connect_to_gitlab()
     config = configparser.ConfigParser()
     config.read('../gitlab-config.ini')
     gitlab_project_id = config.get('horen4gim', 'GITLAB_PROJECT_ID')
@@ -95,18 +127,20 @@ def menu():
     path = config.get('horen4gim', 'PATH')
     calendars = []
 
-    # decision, from which project or group the data is going to be taken and put in the calendar-file
+    # decision, from which project the data is going to be taken and put in the calendar-file
     if ids:
         for project_id in ids:
-            project = get_project(gl, project_id)
+            project = get_project(gila, project_id)
             cal = create_calendar()
             issue_events = get_events_from_issues(project)
+            milestone_events = get_events_from_milestones(project)
             cal.events.update(issue_events)
+            cal.events.update(milestone_events)
             calendars.append((cal, path + project.name))
 
     else:
         print("No project or group selected")
-        exit(1)
+        sys.exit(1)
     write_calendars(calendars)
 
 
