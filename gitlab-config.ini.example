@@ -1,0 +1,8 @@
+[dlr]
+url = https://gitlab.dlr.de
+private_token = <your private token>
+api_version = 4
+
+[horen4gim]
+GITLAB_PROJECT_ID = <gitlab project id>
+PATH = events/
