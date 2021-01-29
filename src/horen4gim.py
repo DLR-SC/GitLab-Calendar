@@ -3,6 +3,7 @@ Extension for GitLab, that generates ics-files from a repositories issues,
  milestones and iterations, which have a due date.
 """
 
+import os
 import configparser
 import sys
 import gitlab
@@ -67,11 +68,11 @@ def create_event(todo, name):
     # decision whether the todos are milestones or a issues
     if isinstance(todo, gitlab.v4.objects.ProjectIssue):
         event.begin = todo.due_date
-        event.categories.add("WIRKLICH WICHTIG")
+        event.categories.add("Issues")
     elif isinstance(todo, gitlab.v4.objects.ProjectMilestone):
         event.begin = todo.start_date
         event.end = todo.due_date
-        event.categories.add("Graue Kategorie")
+        event.categories.add("Milestones")
     event.description = todo.description
     event.location = todo.web_url
 
@@ -125,6 +126,10 @@ def menu():
     gitlab_project_id = config.get('horen4gim', 'GITLAB_PROJECT_ID')
     ids = [int(pid) for pid in gitlab_project_id.split(',')]
     path = config.get('horen4gim', 'PATH')
+    if os.path.isdir(path):
+        pass
+    else:
+        os.mkdir(path)
     calendars = []
 
     # decision, from which project the data is going to be taken and put in the calendar-file
