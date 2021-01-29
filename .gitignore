@@ -4,3 +4,5 @@ events/
 gitlab-config.ini
 .pytest_cache/
 test/
+env/
+venv/

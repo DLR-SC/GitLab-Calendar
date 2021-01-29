@@ -126,10 +126,7 @@ def menu():
     gitlab_project_id = config.get('horen4gim', 'GITLAB_PROJECT_ID')
     ids = [int(pid) for pid in gitlab_project_id.split(',')]
     path = config.get('horen4gim', 'PATH')
-    if os.path.isdir(path):
-        pass
-    else:
-        os.mkdir(path)
+    os.makedirs(path, exist_ok=True)
     calendars = []
 
     # decision, from which project the data is going to be taken and put in the calendar-file

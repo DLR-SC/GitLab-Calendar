@@ -10,7 +10,7 @@ Extension for GitLab, that generates ics-files from a repositories issues, miles
 pip install -r requirements.txt
 ```
 
-* Rename config file to "gitlab-config.ini" and fit to your needs 
+* Rename config file to `gitlab-config.ini` and fit to your needs 
 * Make sure to declare  your private token, a valid project or group id, and the path where your calendar files should be generated at.
 ```
 mv gitlab-config.ini.example gitlab-config.ini
