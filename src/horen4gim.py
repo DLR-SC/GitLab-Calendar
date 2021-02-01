@@ -63,19 +63,22 @@ def create_event(todo, name):
     creates a new event and adds it to the calendar object
     """
     event = Event()
-    event.name = '[' + name + '] ' + todo.title + ' (' + str(todo.iid) + ')'
+    event.name = '[Project:' + name + '] ' + todo.title + ' (' + str(todo.iid) + ')'
 
     # decision whether the todos are milestones or a issues
     if isinstance(todo, gitlab.v4.objects.ProjectIssue):
         event.begin = todo.due_date
         event.categories.add("Issues")
+        if todo.milestone is None:
+            event.description = todo.description
+        else:
+            event.description = "From Milestone: " + todo.milestone.get("title") + "\n\n" + todo.description
     elif isinstance(todo, gitlab.v4.objects.ProjectMilestone):
         event.begin = todo.start_date
         event.end = todo.due_date
         event.categories.add("Milestones")
-    event.description = todo.description
+        event.description = todo.description
     event.location = todo.web_url
-
     event.make_all_day()
     print(" TITLE: ", todo.title, "\tDUE_DATE: ", todo.due_date)
     return event
