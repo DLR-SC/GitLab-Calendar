@@ -6,7 +6,9 @@ Extension for GitLab, that generates ics-files from a repositories issues,
 import os
 import configparser
 import sys
+import argparse
 import gitlab
+from gitlab.v4.objects import ProjectIssue, ProjectMilestone
 from ics import Calendar, Event
 
 
@@ -35,24 +37,23 @@ def get_group(gila, group_id):
     return instance
 
 
-def get_events_from_issues(project):
-    """
-    gets the terminated issues from a project and creates events with them
-    """
+def get_events_2(project, todos):
     events = set()
-    for issue in project.issues.list(all=True, state='opened'):
-        if issue.due_date is not None:
-            event = create_event(issue, project.name)
-            events.add(event)
+    for todo in todos.list(all=True):
+        if todo.state == "opened" or todo.state == "active":
+            if todo.due_date is not None:
+                event = create_event(todo, project.name)
+                events.add(event)
     return events
 
 
-def get_events_from_milestones(project):
-    """
-    gets milestones from a project and creates events with them
-    """
+def get_events(project):
     events = set()
-    for milestone in project.milestones.list(all=True, state='active'):
+    for issue in project.issues.list(all=True, state="opened"):
+        if issue.due_date is not None:
+            event = create_event(issue, project.name)
+            events.add(event)
+    for milestone in project.milestones.list(all=True, state="active"):
         event = create_event(milestone, project.name)
         events.add(event)
     return events
@@ -66,14 +67,14 @@ def create_event(todo, name):
     event.name = '[Project:' + name + '] ' + todo.title + ' (' + str(todo.iid) + ')'
 
     # decision whether the todos are milestones or a issues
-    if isinstance(todo, gitlab.v4.objects.ProjectIssue):
+    if isinstance(todo, ProjectIssue):
         event.begin = todo.due_date
         event.categories.add("Issues")
         if todo.milestone is None:
             event.description = todo.description
         else:
             event.description = "From Milestone: " + todo.milestone.get("title") + "\n\n" + todo.description
-    elif isinstance(todo, gitlab.v4.objects.ProjectMilestone):
+    elif isinstance(todo, ProjectMilestone):
         event.begin = todo.start_date
         event.end = todo.due_date
         event.categories.add("Milestones")
@@ -119,13 +120,16 @@ def write_combined_cal(combined_cal):
         print("All calendars successfully combined.")
 
 
-def menu():
+def converter(config_path):
     """
     central function of the program
     """
+    if config_path is None:
+        print("There is no path given that leads to your config", file=sys.stderr)
+        sys.exit(404)
     gila = connect_to_gitlab()
     config = configparser.ConfigParser()
-    config.read('../gitlab-config.ini')
+    config.read(config_path)
     gitlab_project_id = config.get('horen4gim', 'GITLAB_PROJECT_ID')
     ids = [int(pid) for pid in gitlab_project_id.split(',')]
     path = config.get('horen4gim', 'PATH')
@@ -136,11 +140,13 @@ def menu():
     if ids:
         for project_id in ids:
             project = get_project(gila, project_id)
+
             cal = create_calendar()
-            issue_events = get_events_from_issues(project)
-            milestone_events = get_events_from_milestones(project)
-            cal.events.update(issue_events)
-            cal.events.update(milestone_events)
+            # cal.events.update(get_events(project))  (for first get_events function)
+
+            cal.events.update(get_events_2(project, project.issues))
+            cal.events.update(get_events_2(project, project.milestones))
+
             calendars.append((cal, path + project.name))
 
     else:
@@ -150,4 +156,9 @@ def menu():
 
 
 if __name__ == "__main__":
-    menu()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config", default=None, help="the path of your configuration", type=str)
+    # parser.add_argument("-p", "--project", default=[], help="A list of IDs from Projects that you want", type=list)
+    # parser.add_argument("-p", "--project",  nargs='+', type=int)
+    args = parser.parse_args()
+    converter(args.config)
