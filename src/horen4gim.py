@@ -98,16 +98,17 @@ def create_calendar():
     return cal
 
 
-def write_combined_cal(combined_cal):
+def write_combined_cal(calendars):
     """
     writes a combined file with all the events
     """
-    with open('events/combined.ics', 'w') as combined_file:
-        combined_file.writelines(combined_cal)
+    with open('events/combined.ics', 'w', encoding='utf-8') as combined_file:
+        for calendar, name in calendars:
+            combined_file.writelines(calendar)
         print("All calendars successfully combined.")
 
 
-def converter(config_path, ids_from_terminal=""):
+def converter(config_path, ids_from_terminal="", only_issues=False, only_milestones=False, combine_all_files=False):
     """
     central function of the program
     """
@@ -115,13 +116,20 @@ def converter(config_path, ids_from_terminal=""):
         print("There is no path given that leads to your config", file=sys.stderr)
         sys.exit(404)
     gila = connect_to_gitlab()
+
     config = configparser.ConfigParser()
     config.read(config_path)
-    gitlab_project_id = config.get('horen4gim', 'GITLAB_PROJECT_ID')
-    ids = {int(pid) for pid in gitlab_project_id.split(',')}
+    ids = set()
+    if config.get('horen4gim', 'GITLAB_PROJECT_ID'):
+        gitlab_project_id = config.get('horen4gim', 'GITLAB_PROJECT_ID')
+        config_ids = {int(pid) for pid in gitlab_project_id.split(',')}
+        ids.update(config_ids)
     if ids_from_terminal:
         terminal_ids = {int(pid) for pid in ids_from_terminal.split(',')}
         ids.update(terminal_ids)
+    else:
+        print("There are no ids given", file=sys.stderr)
+        sys.exit(303)
     path = config.get('horen4gim', 'PATH')
     os.makedirs(path, exist_ok=True)
     calendars = []
@@ -130,16 +138,18 @@ def converter(config_path, ids_from_terminal=""):
     if ids:
         for project_id in ids:
             project = get_project(gila, project_id)
-
             cal = create_calendar()
-            cal.events.update(get_events(project.name, project.issues, {"state": "opened"}))
-            cal.events.update(get_events(project.name, project.milestones, {"state": "active"}))
+            if (only_issues is False and only_milestones is False) or (only_issues is True and only_milestones is True):
+                cal.events.update(get_events(project.name, project.issues, {"state": "opened"}))
+                cal.events.update(get_events(project.name, project.milestones, {"state": "active"}))
+            if only_issues is True and only_milestones is False:
+                cal.events.update(get_events(project.name, project.issues, {"state": "opened"}))
+            if only_issues is False and only_milestones is True:
+                cal.events.update(get_events(project.name, project.milestones, {"state": "active"}))
             calendars.append((cal, project.name))
-
-    else:
-        print("No project or group selected")
-        sys.exit(1)
     write_calendars(calendars)
+    if combine_all_files is True:
+        write_combined_cal(calendars)
 
 
 if __name__ == "__main__":
@@ -147,5 +157,10 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--config", default="../gitlab-config.ini", help="path of your config", type=str)
     parser.add_argument("-p", "--project", default=None,
                         help="All the IDs from Projects that you want, separated by \",\"", type=str)
+    parser.add_argument("-i", "--issues", help="Only issues are noticed", action="store_true")
+    parser.add_argument("-m", "--milestones", help="Only milestones are noticed", action="store_true")
+    parser.add_argument("-com", "--combine",
+                        help="If you want to combine all files into one file, you should append this to your command",
+                        action="store_true")
     args = parser.parse_args()
-    converter(args.config, args.project)
+    converter(args.config, args.project, args.issues, args.milestones, args.combine)
