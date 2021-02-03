@@ -37,29 +37,16 @@ def get_group(gila, group_id):
     return instance
 
 
-def get_events_2(project, todos):
+def get_events(name, api_endpoints, filters):
     events = set()
-    for todo in todos.list(all=True):
-        if todo.state == "opened" or todo.state == "active":
-            if todo.due_date is not None:
-                event = create_event(todo, project.name)
-                events.add(event)
-    return events
-
-
-def get_events(project):
-    events = set()
-    for issue in project.issues.list(all=True, state="opened"):
-        if issue.due_date is not None:
-            event = create_event(issue, project.name)
+    for item in api_endpoints.list(all=True, **filters):
+        if item.due_date is not None:
+            event = create_event(item, name)
             events.add(event)
-    for milestone in project.milestones.list(all=True, state="active"):
-        event = create_event(milestone, project.name)
-        events.add(event)
     return events
 
 
-def create_event(todo, name):
+def create_event(todo, name="Default Argument"):
     """
     creates a new event and adds it to the calendar object
     """
@@ -90,7 +77,7 @@ def write_calendar(calendar, file_name):
     writes a calendar-file from a given calendar object
     """
 
-    with open(file_name, 'w', encoding='utf-8') as file:
+    with open("events/" + file_name, 'w', encoding='utf-8') as file:
         file.writelines(calendar)
     print("Successful creation of the file named \"" + file_name + "\".")
 
@@ -120,7 +107,7 @@ def write_combined_cal(combined_cal):
         print("All calendars successfully combined.")
 
 
-def converter(config_path):
+def converter(config_path, ids_from_terminal=""):
     """
     central function of the program
     """
@@ -131,7 +118,10 @@ def converter(config_path):
     config = configparser.ConfigParser()
     config.read(config_path)
     gitlab_project_id = config.get('horen4gim', 'GITLAB_PROJECT_ID')
-    ids = [int(pid) for pid in gitlab_project_id.split(',')]
+    ids = {int(pid) for pid in gitlab_project_id.split(',')}
+    if ids_from_terminal:
+        terminal_ids = {int(pid) for pid in ids_from_terminal.split(',')}
+        ids.update(terminal_ids)
     path = config.get('horen4gim', 'PATH')
     os.makedirs(path, exist_ok=True)
     calendars = []
@@ -142,12 +132,9 @@ def converter(config_path):
             project = get_project(gila, project_id)
 
             cal = create_calendar()
-            # cal.events.update(get_events(project))  (for first get_events function)
-
-            cal.events.update(get_events_2(project, project.issues))
-            cal.events.update(get_events_2(project, project.milestones))
-
-            calendars.append((cal, path + project.name))
+            cal.events.update(get_events(project.name, project.issues, {"state": "opened"}))
+            cal.events.update(get_events(project.name, project.milestones, {"state": "active"}))
+            calendars.append((cal, project.name))
 
     else:
         print("No project or group selected")
@@ -157,8 +144,8 @@ def converter(config_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--config", default=None, help="the path of your configuration", type=str)
-    # parser.add_argument("-p", "--project", default=[], help="A list of IDs from Projects that you want", type=list)
-    # parser.add_argument("-p", "--project",  nargs='+', type=int)
+    parser.add_argument("-c", "--config", default="../gitlab-config.ini", help="path of your config", type=str)
+    parser.add_argument("-p", "--project", default=None,
+                        help="All the IDs from Projects that you want, separated by \",\"", type=str)
     args = parser.parse_args()
-    converter(args.config)
+    converter(args.config, args.project)
