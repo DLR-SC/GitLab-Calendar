@@ -67,8 +67,7 @@ def create_event(todo, name="Default Argument"):
             event.description = "From Milestone: " + todo.milestone.get("title") +\
                                 "\n\n" + todo.description
     elif isinstance(todo, ProjectMilestone) or (isinstance(todo, GroupMilestone)):
-        event.begin = todo.start_date
-        event.end = todo.due_date
+        event.begin = todo.due_date
         event.categories.add("Milestones")
         event.description = todo.description
     event.location = todo.web_url
