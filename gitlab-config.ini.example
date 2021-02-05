@@ -4,5 +4,30 @@ private_token = <your private token>
 api_version = 4
 
 [horen4gim]
-GITLAB_PROJECT_ID = <gitlab project id>
-PATH = events/
+# You can enter either project ids or group ids (Separated from each other).
+# If you want more than one project, please make sure, that they are separated by commas.
+GITLAB_PROJECT_ID = <Project IDs>
+GITLAB_GROUP_ID = <Group IDs>
+
+# You can also choose, whether you only want ISSUES or Milestones.
+# for Example:
+# if you only want the issues, please type:
+# ISSUES = True
+# MILESTONES =
+# if you let both spaces free, the program is going to process normally, including both types.
+ISSUES = True
+MILESTONES = True
+
+# If you want a combined file, pleaser enter a name in there.
+# COMBINED_FILE = combined_calendars.ics
+# If you DON'T want a combined file, just leave the space empty or type in "False".
+# COMBINED_FILE =
+# COMBINED_FILE = False
+COMBINED_FILE = False
+
+# Please enter the absolute path of the directory, where you want to get your calendars created.
+# The target directory doesn't have to exist before. It is going to be created through the process.
+# If you don't type in anything here, like:
+# ABS_PATH =
+# The calendars are going to be created in your working directory.
+ABS_PATH =
