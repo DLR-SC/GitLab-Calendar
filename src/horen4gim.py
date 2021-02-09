@@ -46,6 +46,11 @@ def get_events(name, api_endpoints, filters):
     for item in api_endpoints.list(all=True, **filters):
         if item.due_date is not None:
             event = create_event(item, name)
+            for e in events:
+                if e.name == event.name:
+                    break
+                else:
+                    pass
             events.add(event)
     return events
 
@@ -55,7 +60,7 @@ def create_event(todo, name="Default Argument"):
     creates a new event and adds it to the calendar object
     """
     event = Event()
-    event.name = '[Project:' + name + '] ' + todo.title + ' (' + str(todo.iid) + ')'
+    event.name = todo.title
 
     # decision whether the todos are milestones or a issues
     if isinstance(todo, ProjectIssue) or isinstance(todo, GroupIssue):
@@ -116,8 +121,8 @@ def write_combined_cal(calendars, file_name):
         print("The Calendars were successfully combined.")
 
 
-def fill_cal_object(instance, only_issues, only_milestones):
-    cal = create_calendar()
+def fill_cal_object(instance, only_issues, only_milestones, cal):
+
     if (only_issues is False and only_milestones is False) or\
             (only_issues is True and only_milestones is True):
         cal.events.update(get_events(instance.name, instance.issues, {"state": "opened"}))
@@ -158,25 +163,35 @@ def converter(gila, project_ids=None, group_ids=None,
         print("There is no valid target directory path", file=sys.stderr)
         sys.exit(202)
 
-    calendars = []
-    # decision, from which project or group the data is going to be taken and put in the calendar-file
-    if project_ids:
-        for project_id in project_ids:
-            project = get_project(gila, project_id)
-            cal = fill_cal_object(project, only_issues, only_milestones)
-            calendars.append((cal, project.name))
-    if group_ids:
-        for group_id in group_ids:
-            group = get_group(gila, group_id)
-            cal = fill_cal_object(group, only_issues, only_milestones)
-            calendars.append((cal, group.name))
     if project_ids is None and group_ids is None:
         print("There are no ids given", file=sys.stderr)
         sys.exit(303)
 
     if combine_all_files and combine_all_files != 'False':
-        write_combined_cal(calendars, path.joinpath(combine_all_files))
+        cal = create_calendar()
+        if project_ids:
+            for project_id in project_ids:
+                project = get_project(gila, project_id)
+                cal = fill_cal_object(project, only_issues, only_milestones, cal)
+        if group_ids:
+            for group_id in group_ids:
+                group = get_group(gila, group_id)
+                cal = fill_cal_object(group, only_issues, only_milestones, cal)
+        write_calendar(cal, path.joinpath(combine_all_files), combine_all_files)
+
     else:
+        calendars = []
+        # decision, from which project or group the data is going to be taken and put in the calendar-file
+        if project_ids:
+            for project_id in project_ids:
+                project = get_project(gila, project_id)
+                cal = fill_cal_object(project, only_issues, only_milestones, create_calendar())
+                calendars.append((cal, project.name))
+        if group_ids:
+            for group_id in group_ids:
+                group = get_group(gila, group_id)
+                cal = fill_cal_object(group, only_issues, only_milestones, create_calendar())
+                calendars.append((cal, group.name))
         write_calendars(calendars, path)
 
 
@@ -219,16 +234,22 @@ if __name__ == "__main__":
                         type=str)
     args = parser.parse_args()
     if args.config:
-        config = configparser.ConfigParser()
-        config.read(args.config)
-        args.url = config.get('dlr', 'URL')
-        args.token = config.get('dlr', 'PRIVATE_TOKEN')
-        args.group = convert_ids(config.get('horen4gim', 'GITLAB_GROUP_ID'))
-        args.project = convert_ids(config.get('horen4gim', 'GITLAB_PROJECT_ID'))
-        args.issues = bool(config.get('horen4gim', 'ISSUES'))
-        args.milestones = bool(config.get('horen4gim', 'MILESTONES'))
-        args.combine = config.get('horen4gim', 'COMBINED_FILE')
-        args.directory = config.get('horen4gim', 'ABS_PATH')
+        try:
+            config = configparser.ConfigParser()
+            config.read(args.config)
+            args.url = config.get('dlr', 'URL')
+            args.token = config.get('dlr', 'PRIVATE_TOKEN')
+            args.group = convert_ids(config.get('horen4gim', 'GITLAB_GROUP_ID'))
+            args.project = convert_ids(config.get('horen4gim', 'GITLAB_PROJECT_ID'))
+            args.issues = bool(config.get('horen4gim', 'ISSUES'))
+            args.milestones = bool(config.get('horen4gim', 'MILESTONES'))
+            args.combine = config.get('horen4gim', 'COMBINED_FILE')
+            args.directory = config.get('horen4gim', 'ABS_PATH')
+        except configparser.NoSectionError as e:
+            print("Config Missing", e)
+        except configparser.NoOptionError as e:
+            print("Option Missing", e)
+
     if not args.url:
         print("There is no url given", file=sys.stderr)
         sys.exit(101)
