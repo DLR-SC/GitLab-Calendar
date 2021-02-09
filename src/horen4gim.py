@@ -38,32 +38,27 @@ def get_group(gila, group_id):
     return instance
 
 
-def get_events(name, api_endpoints, filters):
+def get_events(api_endpoints, filters):
     """
     for each given terminated api_endpoint a calendar event is created
     """
     events = set()
     for item in api_endpoints.list(all=True, **filters):
         if item.due_date is not None:
-            event = create_event(item, name)
-            for e in events:
-                if e.name == event.name:
-                    break
-                else:
-                    pass
+            event = create_event(item)
             events.add(event)
     return events
 
 
-def create_event(todo, name="Default Argument"):
+def create_event(todo):
     """
     creates a new event and adds it to the calendar object
     """
     event = Event()
-    event.name = todo.title
 
     # decision whether the todos are milestones or a issues
     if isinstance(todo, ProjectIssue) or isinstance(todo, GroupIssue):
+        event.name = todo.title + " (ISSUE)"
         event.begin = todo.due_date
         event.categories.add("Issues")
         if todo.milestone is None:
@@ -72,6 +67,7 @@ def create_event(todo, name="Default Argument"):
             event.description = "From Milestone: " + todo.milestone.get("title") +\
                                 "\n\n" + todo.description
     elif isinstance(todo, ProjectMilestone) or (isinstance(todo, GroupMilestone)):
+        event.name = todo.title + " (MILESTONE)"
         event.begin = todo.due_date
         event.categories.add("Milestones")
         event.description = todo.description
@@ -122,15 +118,15 @@ def write_combined_cal(calendars, file_name):
 
 
 def fill_cal_object(instance, only_issues, only_milestones, cal):
-
     if (only_issues is False and only_milestones is False) or\
             (only_issues is True and only_milestones is True):
-        cal.events.update(get_events(instance.name, instance.issues, {"state": "opened"}))
-        cal.events.update(get_events(instance.name, instance.milestones, {"state": "active"}))
+        cal.events.update(instance[0])
+        cal.events.update(instance[1])
     elif only_issues is True and only_milestones is False:
-        cal.events.update(get_events(instance.name, instance.issues, {"state": "opened"}))
+        cal.events.update(instance[0])
     elif only_issues is False and only_milestones is True:
-        cal.events.update(get_events(instance.name, instance.milestones, {"state": "active"}))
+        cal.events.update(instance[1])
+    # print(cal)
     return cal
 
 
@@ -167,20 +163,64 @@ def converter(gila, project_ids=None, group_ids=None,
         print("There are no ids given", file=sys.stderr)
         sys.exit(303)
 
-    if combine_all_files and combine_all_files != 'False':
-        cal = create_calendar()
-        if project_ids:
-            for project_id in project_ids:
-                project = get_project(gila, project_id)
-                cal = fill_cal_object(project, only_issues, only_milestones, cal)
-        if group_ids:
-            for group_id in group_ids:
-                group = get_group(gila, group_id)
-                cal = fill_cal_object(group, only_issues, only_milestones, cal)
+    # get issues and milestones from either projects or groups
+    groups = {}
+    projects = {}
+
+    if project_ids:
+        for project_id in project_ids:
+            project = get_project(gila, project_id)
+            issue_events = get_events(project.issues, {"state": "opened"})
+            milestone_events = get_events(project.milestones, {"state": "active"})
+            events = [issue_events, milestone_events]
+            projects[project.name] = events
+    if group_ids:
+        for group_id in group_ids:
+            group = get_group(gila, group_id)
+            issue_events = get_events(group.issues, {"state": "opened"})
+            milestone_events = get_events(group.milestones, {"state": "active"})
+            events = [issue_events, milestone_events]
+            groups[group.name] = events
+    for e in projects:
+        print(projects[e])
+    for e in groups:
+        print(groups[e])
+
+        # combined cal or many cals
+    """
+        if combine_all_files and combine_all_files != "False":
+            all_events = [set(), set()]
+            for group in groups:
+                for project in projects:
+                    all_events[0] = groups[group][0].union(projects[project][0])
+                    all_events[1] = groups[group][1].union(projects[project][1])
+            cal = fill_cal_object(all_events, only_issues, only_milestones, create_calendar())
+            write_calendar(cal, path.joinpath(combine_all_files), combine_all_files)
+        """
+    if combine_all_files and combine_all_files != "False":
+        all_events = [set(), set()]
+        for group in groups:
+            print("1")
+            print(groups)
+            all_events[0].update(groups[group][0])
+            all_events[1].update(groups[group][1])
+        for project in projects:
+            all_events[0].update(projects[project][0])
+            all_events[1].update(projects[project][1])
+        print(all_events)
+        cal = fill_cal_object(all_events, only_issues, only_milestones, create_calendar())
         write_calendar(cal, path.joinpath(combine_all_files), combine_all_files)
 
     else:
         calendars = []
+        for project in projects:
+            cal = fill_cal_object(projects[project], only_issues, only_milestones, create_calendar())
+            calendars.append((cal, project))
+        for group in groups:
+            cal = fill_cal_object(groups[group], only_issues, only_milestones, create_calendar())
+            calendars.append((cal, group))
+        write_calendars(calendars, path)
+        """
         # decision, from which project or group the data is going to be taken and put in the calendar-file
         if project_ids:
             for project_id in project_ids:
@@ -193,6 +233,7 @@ def converter(gila, project_ids=None, group_ids=None,
                 cal = fill_cal_object(group, only_issues, only_milestones, create_calendar())
                 calendars.append((cal, group.name))
         write_calendars(calendars, path)
+"""
 
 
 if __name__ == "__main__":
