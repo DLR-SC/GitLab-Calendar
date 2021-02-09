@@ -1,8 +1,16 @@
-__pycache__/
+# pycharm
 .idea/
+
+# project
 events/
 gitlab-config.ini
+
+
+# pytest
 .pytest_cache/
 test/
+__pycache__/
+
+# python environment
 env/
 venv/
