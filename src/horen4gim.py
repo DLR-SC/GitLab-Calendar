@@ -107,27 +107,19 @@ def write_calendars(calendars, target_path):
                   ".ics\" would be empty and is not going to be created")
 
 
-def write_combined_cal(calendars, file_name):
-    """
-    writes a combined file with all the events
-    """
-    with open(file_name, 'w', encoding='utf-8') as combined_calendar_file:
-        for calendar, name in calendars:
-            combined_calendar_file.writelines(calendar)
-        print("The Calendars were successfully combined.")
+def filter_todos(instance, only_issues, only_milestones):
+    issue_events = set()
+    milestone_events = set()
 
-
-def fill_cal_object(instance, only_issues, only_milestones, cal):
-    if (only_issues is False and only_milestones is False) or\
+    if (only_issues is False and only_milestones is False) or \
             (only_issues is True and only_milestones is True):
-        cal.events.update(instance[0])
-        cal.events.update(instance[1])
+        issue_events = get_events(instance.issues, {"state": "opened"})
+        milestone_events = get_events(instance.milestones, {"state": "active"})
     elif only_issues is True and only_milestones is False:
-        cal.events.update(instance[0])
+        issue_events = get_events(instance.issues, {"state": "opened"})
     elif only_issues is False and only_milestones is True:
-        cal.events.update(instance[1])
-    # print(cal)
-    return cal
+        milestone_events = get_events(instance.milestones, {"state": "active"})
+    return issue_events, milestone_events
 
 
 def convert_ids(id_string):
@@ -170,70 +162,53 @@ def converter(gila, project_ids=None, group_ids=None,
     if project_ids:
         for project_id in project_ids:
             project = get_project(gila, project_id)
-            issue_events = get_events(project.issues, {"state": "opened"})
-            milestone_events = get_events(project.milestones, {"state": "active"})
-            events = [issue_events, milestone_events]
+            issue_events, milestone_events = filter_todos(project, only_issues, only_milestones)
+            events = issue_events.union(milestone_events)
             projects[project.name] = events
+            print(projects[project.name])
     if group_ids:
         for group_id in group_ids:
             group = get_group(gila, group_id)
-            issue_events = get_events(group.issues, {"state": "opened"})
-            milestone_events = get_events(group.milestones, {"state": "active"})
-            events = [issue_events, milestone_events]
+            issue_events, milestone_events = filter_todos(group, only_issues, only_milestones)
+            events = issue_events.union(milestone_events)
             groups[group.name] = events
-    for e in projects:
-        print(projects[e])
-    for e in groups:
-        print(groups[e])
 
-        # combined cal or many cals
-    """
-        if combine_all_files and combine_all_files != "False":
-            all_events = [set(), set()]
-            for group in groups:
-                for project in projects:
-                    all_events[0] = groups[group][0].union(projects[project][0])
-                    all_events[1] = groups[group][1].union(projects[project][1])
-            cal = fill_cal_object(all_events, only_issues, only_milestones, create_calendar())
-            write_calendar(cal, path.joinpath(combine_all_files), combine_all_files)
-        """
+    # combined cal or many cals
+
     if combine_all_files and combine_all_files != "False":
-        all_events = [set(), set()]
+        all_events = set()
         for group in groups:
-            print("1")
-            print(groups)
-            all_events[0].update(groups[group][0])
-            all_events[1].update(groups[group][1])
-        for project in projects:
-            all_events[0].update(projects[project][0])
-            all_events[1].update(projects[project][1])
+            all_events.update(groups[group])
+        print("1")
         print(all_events)
-        cal = fill_cal_object(all_events, only_issues, only_milestones, create_calendar())
-        write_calendar(cal, path.joinpath(combine_all_files), combine_all_files)
 
+        for project in projects:
+            help_set = set()
+            for pevent in projects[project]:
+                for aevent in all_events:
+                    if pevent.location == aevent.location:
+                        print(pevent.location, aevent.location)
+                        break
+                    else:
+                        pass
+                help_set.add(pevent)
+            print(help_set)
+            all_events.update(help_set)
+
+        cal = create_calendar()
+        cal.events.update(all_events)
+        write_calendar(cal, path.joinpath(combine_all_files), combine_all_files)
     else:
         calendars = []
         for project in projects:
-            cal = fill_cal_object(projects[project], only_issues, only_milestones, create_calendar())
+            cal = create_calendar()
+            cal.events.update(projects[project])
             calendars.append((cal, project))
         for group in groups:
-            cal = fill_cal_object(groups[group], only_issues, only_milestones, create_calendar())
+            cal = create_calendar()
+            cal.events.update(groups[group])
             calendars.append((cal, group))
         write_calendars(calendars, path)
-        """
-        # decision, from which project or group the data is going to be taken and put in the calendar-file
-        if project_ids:
-            for project_id in project_ids:
-                project = get_project(gila, project_id)
-                cal = fill_cal_object(project, only_issues, only_milestones, create_calendar())
-                calendars.append((cal, project.name))
-        if group_ids:
-            for group_id in group_ids:
-                group = get_group(gila, group_id)
-                cal = fill_cal_object(group, only_issues, only_milestones, create_calendar())
-                calendars.append((cal, group.name))
-        write_calendars(calendars, path)
-"""
 
 
 if __name__ == "__main__":
