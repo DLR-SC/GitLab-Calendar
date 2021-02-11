@@ -135,15 +135,14 @@ def convert_ids(id_string):
     converts a string of given ids into a set of integer ids
     """
     if id_string != "":
-        ids = {int(pid) for pid in id_string.split(',')}
+        return {int(pid) for pid in id_string.split(',')}
     else:
-        ids = set()
-    return ids
+        return set()
 
 
 def converter(gila, project_ids=None, group_ids=None,
               only_issues=False, only_milestones=False,
-              combine_all_files="", target_directory_path="."):
+              combined_calendar="", target_directory_path="."):
     """
     central function of the program
     """
@@ -151,8 +150,7 @@ def converter(gila, project_ids=None, group_ids=None,
     path = Path(target_directory_path)
     os.makedirs(path, exist_ok=True)
     if not path.exists():
-        print("There is no valid target directory path", file=sys.stderr)
-        sys.exit(202)
+        raise FileNotFoundError("There is no valid target directory path")
 
     if project_ids is None and group_ids is None:
         print("There are no ids given", file=sys.stderr)
@@ -162,41 +160,24 @@ def converter(gila, project_ids=None, group_ids=None,
     groups = {}
     projects = {}
 
-    if project_ids:
-        for project_id in project_ids:
-            project = get_project(gila, project_id)
-            issue_events, milestone_events = filter_todos(project, only_issues, only_milestones)
-            events = issue_events.union(milestone_events)
-            projects[project.name] = events
-    if group_ids:
-        for group_id in group_ids:
-            group = get_group(gila, group_id)
-            issue_events, milestone_events = filter_todos(group, only_issues, only_milestones)
-            events = issue_events.union(milestone_events)
-            groups[group.name] = events
+    for project_id in project_ids:
+        project = get_project(gila, project_id)
+        issue_events, milestone_events = filter_todos(project, only_issues, only_milestones)
+        events = issue_events.union(milestone_events)
+        projects[project.name] = events
+    for group_id in group_ids:
+        group = get_group(gila, group_id)
+        issue_events, milestone_events = filter_todos(group, only_issues, only_milestones)
+        events = issue_events.union(milestone_events)
+        groups[group.name] = events
 
     # combined cal or many cals
 
-    if combine_all_files and combine_all_files != "False":
-        all_events = set()
-        for group in groups:
-            all_events.update(groups[group])
-        help_set = set()
-        for project in projects:
-            for p_event in projects[project]:
-                counter = 0
-                for a_event in all_events:
-                    if p_event.location == a_event.location:
-                        break
-                    if counter < len(all_events)-1:
-                        pass
-                    else:
-                        help_set.add(p_event)
-                    counter += 1
-        all_events.update(help_set)
+    if combined_calendar and combined_calendar != "False":
         cal = create_calendar()
+        all_events = merge_events(groups, projects)
         cal.events.update(all_events)
-        write_calendar(cal, path.joinpath(combine_all_files), combine_all_files)
+        write_calendar(cal, path.joinpath(combined_calendar), combined_calendar)
     else:
         calendars = []
         for project in projects:
@@ -210,10 +191,25 @@ def converter(gila, project_ids=None, group_ids=None,
         write_calendars(calendars, path)
 
 
+def merge_events(groups, projects):
+    all_events = set()
+    all_events.update(*groups.values())
+    for events in projects.values():
+        for p_event in events:
+            seen = False
+            for a_event in all_events:
+                if p_event.location == a_event.location:
+                    seen = True
+                    break
+            if not seen:
+                all_events.add(p_event)
+    return all_events
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--config",
-                        default="../gitlab-config.ini",
+    parser.add_argument("--config",
+                        default=None,
                         help="Path of your config. If you dont use a config, "
                              "you have to enter an url and authentication token manually",
                         type=str)
@@ -242,31 +238,32 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--milestones",
                         help="Only milestones are noticed",
                         action="store_true")
-    parser.add_argument("-com", "--combine",
+    parser.add_argument("-c", "--combine",
                         help="If you want to combine all files into one file,"
                              " you should append this to your command and"
                              "the wanted name of your file",
                         type=str)
     args = parser.parse_args()
-    if args.config:
-        try:
-            config = configparser.ConfigParser()
-            config.read(args.config)
-            args.group = convert_ids(config.get('horen4gim', 'GITLAB_GROUP_ID'))
-            args.project = convert_ids(config.get('horen4gim', 'GITLAB_PROJECT_ID'))
-            args.issues = bool(config.get('horen4gim', 'ISSUES'))
-            args.milestones = bool(config.get('horen4gim', 'MILESTONES'))
-            args.combine = config.get('horen4gim', 'COMBINED_FILE')
-            args.directory = config.get('horen4gim', 'ABS_PATH')
-        except configparser.NoSectionError as error:
-            print("Config Missing", error)
-        except configparser.NoOptionError as error:
-            print("Option Missing", error)
+    if args.config is None:
+        raise Exception()
+    try:
+        config = configparser.ConfigParser()
+        config.read(args.config)
+        args.groups = convert_ids(config.get('horen4gim', 'GITLAB_GROUP_ID'))
+        args.projects = convert_ids(config.get('horen4gim', 'GITLAB_PROJECT_ID'))
+        args.issues = bool(config.get('horen4gim', 'ISSUES'))
+        args.milestones = bool(config.get('horen4gim', 'MILESTONES'))
+        args.combine = config.get('horen4gim', 'COMBINED_FILE', fallback="")
+        args.directory = config.get('horen4gim', 'ABS_PATH')
+    except configparser.NoSectionError as error:
+        print("Config Missing", error)
+    except configparser.NoOptionError as error:
+        print("Option Missing", error)
 
-    if not args.project and not args.group:
+    if not args.projects and not args.groups:
         print("There is no project or group id given", file=sys.stderr)
         sys.exit(606)
 
     gl = connect_to_gitlab(args.config, args.url, args.token)
-    converter(gl, args.project, args.group, args.issues,
+    converter(gl, args.projects, args.groups, args.issues,
               args.milestones, args.combine, args.directory)

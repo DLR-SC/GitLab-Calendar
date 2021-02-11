@@ -1,5 +1,5 @@
 # Horen4GIM
-Extension for GitLab, that generates ics-files from a repositories issues, milestones and iterations, which have a due date.
+Tool that generates ics-files from a repositories issues, milestones and iterations, which have a due date.
 
 ## Setup
 The script requires Python >= 3.9 and uses the libraries [ics](https://icspy.readthedocs.io/en/stable/) and [python-gitlab](https://python-gitlab.readthedocs.io/en/stable/)
@@ -27,7 +27,7 @@ python src/horen4gim.py -c <PATH OF YOUR CONFIG>
 ```
 
 ### 2 Run it with all the options you need
-
+**Warning! Please consider using the config in first case for not leaking any access tokens**
 * Here, there's a need to declare the url of the gitlab instance, your private token, and at least one project or group id.
 ```
 python src/horen4gim.py -u <URL> -t <PRIVATE TOKEN> -p <LIST OF PROJECT IDS> -g <LIST OF GROUP IDS>    

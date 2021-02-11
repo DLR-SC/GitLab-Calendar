@@ -3,12 +3,11 @@
 
 # project
 events/
-gitlab-config.ini
+*.ini
 
 
 # pytest
 .pytest_cache/
-test/
 __pycache__/
 
 # python environment
