@@ -1,17 +1,38 @@
 # Horen4GIM
-
 Extension for GitLab, that generates ics-files from a repositories issues, milestones and iterations, which have a due date.
 
 ## Setup
+The script requires Python ?? and uses the libraries [ics](https://icspy.readthedocs.io/en/stable/) and [python-gitlab](https://python-gitlab.readthedocs.io/en/stable/)
 * Clone repository
 * Change into repository
+* install the [required dependencies](requirements.txt)
 
 ```
+git clone ...
+cd horen4gim 
 pip install -r requirements.txt
 ```
 
-* Rename config file to `gitlab-config.ini` and fit to your needs 
-* Make sure to declare  your private token, a valid project or group id, and the path where your calendar files should be generated at.
+## Usage
+There are two options of running the script:
+### 1 Run it with a config 
+* Rename [gitlab-config.ini.example](gitlab-config.ini.example) to `gitlab-config.ini` and fit to your needs 
 ```
 mv gitlab-config.ini.example gitlab-config.ini
+```
+* Make sure to declare your private token, a valid project or group id, and the path where your calendar files should be generated at.
+* Once this is done, you can run the script as follows:
+```
+python src/horen4gim.py -c <PATH OF YOUR CONFIG>    
+```
+
+### 2 Run it with all the options you need
+
+* Here, there's a need to declare the url of the gitlab instance, your private token, and at least one project or group id.
+```
+python src/horen4gim.py -u <URL> -t <PRIVATE TOKEN> -p <LIST OF PROJECT IDS> -g <LIST OF GROUP IDS>    
+```
+* For more options please use:
+```
+python src/horen4gim.py -h
 ```
