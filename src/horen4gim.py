@@ -60,7 +60,7 @@ def create_event(todo):
     event = Event()
 
     # decision whether the todos are milestones or a issues
-    if isinstance(todo, ProjectIssue) or isinstance(todo, GroupIssue):
+    if isinstance(todo, (GroupIssue, ProjectIssue)):
         event.name = todo.title + " (ISSUE)"
         event.begin = todo.due_date
         event.categories.add("Issues")
@@ -69,7 +69,7 @@ def create_event(todo):
         else:
             event.description = "From Milestone: " + todo.milestone.get("title") +\
                                 "\n\n" + todo.description
-    elif isinstance(todo, ProjectMilestone) or (isinstance(todo, GroupMilestone)):
+    elif isinstance(todo, (GroupMilestone, ProjectMilestone)):
         event.name = todo.title + " (MILESTONE)"
         event.begin = todo.due_date
         event.categories.add("Milestones")
@@ -111,6 +111,10 @@ def write_calendars(calendars, target_path):
 
 
 def filter_todos(instance, only_issues, only_milestones):
+    """
+    from an instance the todos that the user wants are going to be stored in
+    sets as events.
+    """
     issue_events = set()
     milestone_events = set()
 
@@ -141,10 +145,6 @@ def converter(gila, project_ids=None, group_ids=None,
               combine_all_files="", target_directory_path="."):
     """
     central function of the program
-
-    if config_path is None:
-        print("There is no path given that leads to your config", file=sys.stderr)
-        sys.exit(404)
     """
 
     path = Path(target_directory_path)
@@ -183,18 +183,16 @@ def converter(gila, project_ids=None, group_ids=None,
             all_events.update(groups[group])
         help_set = set()
         for project in projects:
-            for pevent in projects[project]:
-                stelle = 0
-                for aevent in all_events:
-                    if pevent.location == aevent.location:
-
+            for p_event in projects[project]:
+                counter = 0
+                for a_event in all_events:
+                    if p_event.location == a_event.location:
                         break
-                    elif pevent.location != aevent.location:
-                        if stelle < len(all_events)-1:
-                            pass
-                        else:
-                            help_set.add(pevent)
-                    stelle += 1
+                    if counter < len(all_events)-1:
+                        pass
+                    else:
+                        help_set.add(p_event)
+                    counter += 1
         all_events.update(help_set)
         cal = create_calendar()
         cal.events.update(all_events)
@@ -260,14 +258,15 @@ if __name__ == "__main__":
             args.milestones = bool(config.get('horen4gim', 'MILESTONES'))
             args.combine = config.get('horen4gim', 'COMBINED_FILE')
             args.directory = config.get('horen4gim', 'ABS_PATH')
-        except configparser.NoSectionError as e:
-            print("Config Missing", e)
-        except configparser.NoOptionError as e:
-            print("Option Missing", e)
+        except configparser.NoSectionError as error:
+            print("Config Missing", error)
+        except configparser.NoOptionError as error:
+            print("Option Missing", error)
 
     if not args.project and not args.group:
         print("There is no project or group id given", file=sys.stderr)
         sys.exit(606)
 
     gl = connect_to_gitlab(args.config, args.url, args.token)
-    converter(gl, args.project, args.group, args.issues, args.milestones, args.combine, args.directory)
+    converter(gl, args.project, args.group, args.issues,
+              args.milestones, args.combine, args.directory)
