@@ -13,11 +13,14 @@ from gitlab.v4.objects import ProjectIssue, ProjectMilestone, GroupIssue, GroupM
 from ics import Calendar, Event
 
 
-def connect_to_gitlab(server_url, private_access_token):
+def connect_to_gitlab(config_path="", server_url="", private_access_token=""):
     """
     personal access token authentication
     """
-    gila = gitlab.Gitlab(server_url, private_token=private_access_token)
+    if config_path:
+        gila = gitlab.Gitlab.from_config("dlr", config_files=config_path)
+    else:
+        gila = gitlab.Gitlab(server_url, private_token=private_access_token)
     gila.auth()
     return gila
 
@@ -165,7 +168,6 @@ def converter(gila, project_ids=None, group_ids=None,
             issue_events, milestone_events = filter_todos(project, only_issues, only_milestones)
             events = issue_events.union(milestone_events)
             projects[project.name] = events
-            print(projects[project.name])
     if group_ids:
         for group_id in group_ids:
             group = get_group(gila, group_id)
@@ -179,22 +181,21 @@ def converter(gila, project_ids=None, group_ids=None,
         all_events = set()
         for group in groups:
             all_events.update(groups[group])
-        print("1")
-        print(all_events)
-
+        help_set = set()
         for project in projects:
-            help_set = set()
             for pevent in projects[project]:
+                stelle = 0
                 for aevent in all_events:
                     if pevent.location == aevent.location:
-                        print(pevent.location, aevent.location)
-                        break
-                    else:
-                        pass
-                help_set.add(pevent)
-            print(help_set)
-            all_events.update(help_set)
 
+                        break
+                    elif pevent.location != aevent.location:
+                        if stelle < len(all_events)-1:
+                            pass
+                        else:
+                            help_set.add(pevent)
+                    stelle += 1
+        all_events.update(help_set)
         cal = create_calendar()
         cal.events.update(all_events)
         write_calendar(cal, path.joinpath(combine_all_files), combine_all_files)
@@ -253,8 +254,6 @@ if __name__ == "__main__":
         try:
             config = configparser.ConfigParser()
             config.read(args.config)
-            args.url = config.get('dlr', 'URL')
-            args.token = config.get('dlr', 'PRIVATE_TOKEN')
             args.group = convert_ids(config.get('horen4gim', 'GITLAB_GROUP_ID'))
             args.project = convert_ids(config.get('horen4gim', 'GITLAB_PROJECT_ID'))
             args.issues = bool(config.get('horen4gim', 'ISSUES'))
@@ -266,15 +265,9 @@ if __name__ == "__main__":
         except configparser.NoOptionError as e:
             print("Option Missing", e)
 
-    if not args.url:
-        print("There is no url given", file=sys.stderr)
-        sys.exit(101)
-    if not args.token:
-        print("There is no token given", file=sys.stderr)
-        sys.exit(505)
     if not args.project and not args.group:
         print("There is no project or group id given", file=sys.stderr)
         sys.exit(606)
 
-    gl = connect_to_gitlab(args.url, args.token)
+    gl = connect_to_gitlab(args.config, args.url, args.token)
     converter(gl, args.project, args.group, args.issues, args.milestones, args.combine, args.directory)
