@@ -15,8 +15,9 @@ setuptools.setup(
     url="https://gitlab.dlr.de/sc/ivs-open/horen4gim",
     packages=setuptools.find_packages(),
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.9",
 
     ],
-    python_requires='>=3.6',
+    keywords='ics ical calendar icalendar gitlab api outlook issues milestones',
+    python_requires='>=3.9',
 )

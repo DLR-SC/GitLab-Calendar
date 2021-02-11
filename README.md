@@ -2,7 +2,7 @@
 Extension for GitLab, that generates ics-files from a repositories issues, milestones and iterations, which have a due date.
 
 ## Setup
-The script requires Python ?? and uses the libraries [ics](https://icspy.readthedocs.io/en/stable/) and [python-gitlab](https://python-gitlab.readthedocs.io/en/stable/)
+The script requires Python >= 3.9 and uses the libraries [ics](https://icspy.readthedocs.io/en/stable/) and [python-gitlab](https://python-gitlab.readthedocs.io/en/stable/)
 * Clone repository
 * Change into repository
 * install the [required dependencies](requirements.txt)

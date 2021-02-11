@@ -41,27 +41,27 @@ def get_group(gila, group_id):
     return instance
 
 
-def get_events(api_endpoints, filters):
+def get_events(instance, api_endpoints, filters):
     """
     for each given terminated api_endpoint a calendar event is created
     """
+
     events = set()
     for item in api_endpoints.list(all=True, **filters):
         if item.due_date is not None:
-            event = create_event(item)
+            event = create_event(item, instance)
             events.add(event)
     return events
 
 
-def create_event(todo):
+def create_event(todo, instance):
     """
     creates a new event and adds it to the calendar object
     """
     event = Event()
-
     # decision whether the todos are milestones or a issues
     if isinstance(todo, (GroupIssue, ProjectIssue)):
-        event.name = todo.title + " (ISSUE)"
+        event.name = "[" + instance.name + "] " + todo.title + " (ISSUE)"
         event.begin = todo.due_date
         event.categories.add("Issues")
         if todo.milestone is None:
@@ -70,7 +70,7 @@ def create_event(todo):
             event.description = "From Milestone: " + todo.milestone.get("title") +\
                                 "\n\n" + todo.description
     elif isinstance(todo, (GroupMilestone, ProjectMilestone)):
-        event.name = todo.title + " (MILESTONE)"
+        event.name = "[" + instance.name + "] " + todo.title + " (MILESTONE)"
         event.begin = todo.due_date
         event.categories.add("Milestones")
         event.description = todo.description
@@ -95,7 +95,7 @@ def write_calendar(calendar, file_path, name):
 
     with open(file_path, 'w', encoding='utf-8') as file:
         file.writelines(calendar)
-    print("Successful creation of the file named \"" + name + ".ics\".")
+    print("Successful creation of the file named \"" + name + "\".")
 
 
 def write_calendars(calendars, target_path):
@@ -103,11 +103,12 @@ def write_calendars(calendars, target_path):
     calls the "write_calendar" function for each given project
     """
     for calendar, name in calendars:
+        name += ".ics"
         if calendar.events != set():
-            write_calendar(calendar, target_path.joinpath(name + '.ics'), name)
+            write_calendar(calendar, target_path.joinpath(name), name)
         else:
             print("The Calendar called \"" + name +
-                  ".ics\" would be empty and is not going to be created")
+                  "\" would be empty and is not going to be created")
 
 
 def filter_todos(instance, only_issues, only_milestones):
@@ -120,12 +121,12 @@ def filter_todos(instance, only_issues, only_milestones):
 
     if (only_issues is False and only_milestones is False) or \
             (only_issues is True and only_milestones is True):
-        issue_events = get_events(instance.issues, {"state": "opened"})
-        milestone_events = get_events(instance.milestones, {"state": "active"})
+        issue_events = get_events(instance, instance.issues, {"state": "opened"})
+        milestone_events = get_events(instance, instance.milestones, {"state": "active"})
     elif only_issues is True and only_milestones is False:
-        issue_events = get_events(instance.issues, {"state": "opened"})
+        issue_events = get_events(instance, instance.issues, {"state": "opened"})
     elif only_issues is False and only_milestones is True:
-        milestone_events = get_events(instance.milestones, {"state": "active"})
+        milestone_events = get_events(instance, instance.milestones, {"state": "active"})
     return issue_events, milestone_events
 
 
@@ -149,7 +150,6 @@ def converter(gila, project_ids=None, group_ids=None,
 
     path = Path(target_directory_path)
     os.makedirs(path, exist_ok=True)
-    print("1 ", path)
     if not path.exists():
         print("There is no valid target directory path", file=sys.stderr)
         sys.exit(202)
