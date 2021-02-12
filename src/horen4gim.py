@@ -13,34 +13,6 @@ from gitlab.v4.objects import ProjectIssue, ProjectMilestone, GroupIssue, GroupM
 from ics import Calendar, Event
 
 
-def connect_to_gitlab(config_path="", server_url="", private_access_token=""):
-    """
-    personal access token authentication
-    """
-    if config_path:
-        gila = gitlab.Gitlab.from_config("dlr", config_files=config_path)
-    else:
-        gila = gitlab.Gitlab(server_url, private_token=private_access_token)
-    gila.auth()
-    return gila
-
-
-def get_project(gila, project_id):
-    """
-    returns a specific project from a given ID
-    """
-    instance = gila.projects.get(project_id)
-    return instance
-
-
-def get_group(gila, group_id):
-    """
-    returns a specific group from a given ID
-    """
-    instance = gila.groups.get(group_id)
-    return instance
-
-
 def get_events(instance, api_endpoints, filters):
     """
     for each given terminated api_endpoint a calendar event is created
@@ -78,6 +50,21 @@ def create_event(todo, instance):
     event.make_all_day()
     print(" TITLE: ", todo.title, "\tDUE_DATE: ", todo.due_date)
     return event
+
+
+def merge_events(groups, projects):
+    all_events = set()
+    all_events.update(*groups.values())
+    for events in projects.values():
+        for p_event in events:
+            seen = False
+            for a_event in all_events:
+                if p_event.location == a_event.location:
+                    seen = True
+                    break
+            if not seen:
+                all_events.add(p_event)
+    return all_events
 
 
 def create_calendar():
@@ -159,18 +146,20 @@ def converter(gila, project_ids=None, group_ids=None,
     # get issues and milestones from either projects or groups
     groups = {}
     projects = {}
-
-    for project_id in project_ids:
-        project = get_project(gila, project_id)
-        issue_events, milestone_events = filter_todos(project, only_issues, only_milestones)
-        events = issue_events.union(milestone_events)
-        projects[project.name] = events
-    for group_id in group_ids:
-        group = get_group(gila, group_id)
-        issue_events, milestone_events = filter_todos(group, only_issues, only_milestones)
-        events = issue_events.union(milestone_events)
-        groups[group.name] = events
-
+    try:
+        for project_id in project_ids:
+            project = gila.projects.get(project_id)
+            issue_events, milestone_events = filter_todos(project, only_issues, only_milestones)
+            events = issue_events.union(milestone_events)
+            projects[project.name] = events
+        for group_id in group_ids:
+            group = gila.groups.get(group_id)
+            issue_events, milestone_events = filter_todos(group, only_issues, only_milestones)
+            events = issue_events.union(milestone_events)
+            groups[group.name] = events
+    except TypeError as err:
+        print("No ID: ", err)
+        pass
     # combined cal or many cals
 
     if combined_calendar and combined_calendar != "False":
@@ -191,22 +180,7 @@ def converter(gila, project_ids=None, group_ids=None,
         write_calendars(calendars, path)
 
 
-def merge_events(groups, projects):
-    all_events = set()
-    all_events.update(*groups.values())
-    for events in projects.values():
-        for p_event in events:
-            seen = False
-            for a_event in all_events:
-                if p_event.location == a_event.location:
-                    seen = True
-                    break
-            if not seen:
-                all_events.add(p_event)
-    return all_events
-
-
-if __name__ == "__main__":
+def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config",
                         default=None,
@@ -224,11 +198,11 @@ if __name__ == "__main__":
                         default="",
                         help="The directory where you want your calendar/s to be created",
                         type=str)
-    parser.add_argument("-p", "--project", default=None,
+    parser.add_argument("-p", "--projects", default=None,
                         help="All the IDs from Projects that you want,"
                              " separated by \",\"",
                         nargs='+')
-    parser.add_argument("-g", "--group", default=None,
+    parser.add_argument("-g", "--groups", default=None,
                         help="All the IDs from Groups that you want,"
                              " separated by \",\"",
                         nargs='+')
@@ -243,27 +217,31 @@ if __name__ == "__main__":
                              " you should append this to your command and"
                              "the wanted name of your file",
                         type=str)
-    args = parser.parse_args()
-    if args.config is None:
-        raise Exception()
+    arguments = parser.parse_args()
+    return arguments
+
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    gl = None
     try:
         config = configparser.ConfigParser()
         config.read(args.config)
+        gl = gitlab.Gitlab.from_config("dlr", config_files=args.config)
         args.groups = convert_ids(config.get('horen4gim', 'GITLAB_GROUP_ID'))
         args.projects = convert_ids(config.get('horen4gim', 'GITLAB_PROJECT_ID'))
         args.issues = bool(config.get('horen4gim', 'ISSUES'))
         args.milestones = bool(config.get('horen4gim', 'MILESTONES'))
         args.combine = config.get('horen4gim', 'COMBINED_FILE', fallback="")
         args.directory = config.get('horen4gim', 'ABS_PATH')
+    except TypeError as error:
+        print("Config Missing", error)
+        gl = gitlab.Gitlab(args.url, private_token=args.token)
     except configparser.NoSectionError as error:
         print("Config Missing", error)
     except configparser.NoOptionError as error:
         print("Option Missing", error)
 
-    if not args.projects and not args.groups:
-        print("There is no project or group id given", file=sys.stderr)
-        sys.exit(606)
-
-    gl = connect_to_gitlab(args.config, args.url, args.token)
+    gl.auth()
     converter(gl, args.projects, args.groups, args.issues,
               args.milestones, args.combine, args.directory)
