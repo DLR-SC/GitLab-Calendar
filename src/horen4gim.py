@@ -5,7 +5,6 @@ Extension for GitLab, that generates ics-files from a repositories issues,
 
 import os
 import configparser
-import sys
 import argparse
 from pathlib import Path
 import gitlab
@@ -139,10 +138,6 @@ def converter(gila, project_ids=None, group_ids=None,
     if not path.exists():
         raise FileNotFoundError("There is no valid target directory path")
 
-    if project_ids is None and group_ids is None:
-        print("There are no ids given", file=sys.stderr)
-        sys.exit(303)
-
     # get issues and milestones from either projects or groups
     groups = {}
     projects = {}
@@ -238,10 +233,15 @@ if __name__ == "__main__":
         print("Config Missing", error)
         gl = gitlab.Gitlab(args.url, private_token=args.token)
     except configparser.NoSectionError as error:
-        print("Config Missing", error)
+        print("Section Missing", error)
     except configparser.NoOptionError as error:
         print("Option Missing", error)
+    except configparser.DuplicateOptionError as error:
+        print("Duplicate Option", error)
 
     gl.auth()
-    converter(gl, args.projects, args.groups, args.issues,
-              args.milestones, args.combine, args.directory)
+    try:
+        converter(gl, args.projects, args.groups, args.issues,
+                  args.milestones, args.combine, args.directory)
+    except ValueError:
+        raise ValueError("No Value given.")
