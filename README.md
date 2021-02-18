@@ -7,6 +7,7 @@ The script requires Python >= 3.9 and uses the libraries [ics](https://icspy.rea
 * Change into repository
 * install the [required dependencies](requirements.txt)
 
+
 ```
 git clone ...
 cd horen4gim 
