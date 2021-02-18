@@ -42,7 +42,7 @@ def create_event(todo, instance):
         if todo.milestone is None:
             event.description = todo.description
         else:
-            event.description = "From Milestone: " + todo.milestone.get("title") +\
+            event.description = "From Milestone: " + todo.milestone.get("title") + \
                                 "\n\n" + todo.description
     elif isinstance(todo, (GroupMilestone, ProjectMilestone)):
         if isinstance(todo, GroupMilestone):
@@ -147,17 +147,18 @@ def convert_ids(id_string):
         return set()
 
 
-def converter(gila, project_ids=None, group_ids=None,
-              only_issues=False, only_milestones=False,
+def converter(gila, only_issues, only_milestones,
+              project_ids=None, group_ids=None,
               combined_calendar="", target_directory_path="."):
     """
     central function of the program
     """
 
+    print(only_issues, only_milestones)
+    print("1")
     path = Path(target_directory_path)
     os.makedirs(path, exist_ok=True)
     print(path.absolute())
-
 
     # get issues and milestones from either projects or groups
     groups = {}
@@ -259,8 +260,8 @@ if __name__ == "__main__":
         GL = gitlab.Gitlab.from_config("dlr", config_files=args.config)
         args.groups = convert_ids(config.get('horen4gim', 'GITLAB_GROUP_ID'))
         args.projects = convert_ids(config.get('horen4gim', 'GITLAB_PROJECT_ID'))
-        args.issues = bool(config.get('horen4gim', 'ISSUES'))
-        args.milestones = bool(config.get('horen4gim', 'MILESTONES'))
+        args.issues = bool(config.get('horen4gim', 'ISSUES', fallback=False))
+        args.milestones = bool(config.get('horen4gim', 'MILESTONES', fallback=False))
         args.combine = config.get('horen4gim', 'COMBINED_FILE', fallback="")
         args.directory = config.get('horen4gim', 'ABS_PATH')
     except TypeError as error:
@@ -275,7 +276,7 @@ if __name__ == "__main__":
 
     GL.auth()
     try:
-        converter(GL, args.projects, args.groups, args.issues,
-                  args.milestones, args.combine, args.directory)
+        converter(GL, args.issues,args.milestones, args.projects,
+                  args.groups, args.combine, args.directory)
     except ValueError:
         raise ValueError("No Value given.")
