@@ -7,35 +7,52 @@ from gitlab.v4.objects import Project, Group
 from horen4gim import merge_events, create_event
 # from horen4gim import create_calendar, write_calendar, create_event, get_events, get_instance
 
-gl = gitlab.Gitlab.from_config("dlr", config_files="gitlab-config.ini")
+
 e1 = Event(name="e1", location="url1")
 e2 = Event(name="e2", location="url2")
 e3 = Event(name="e3", location="url3")
-e4 = Event(name="e2", location="url2")
+e4 = Event(name="e4", location="url4")
+e5 = Event(name="e5same_as_e4", location="url4")
 
 
 @pytest.mark.parametrize("groups,projects,expected_events", [
-    ({"g1": {e1, e2}}, {"p1": {e4}}, {e1, e2}),
+    ({"g1": {e1, e2}}, {"p1": {e4}}, {e1, e2, e4}),
     ({}, {"p1": {e1, e2, e3}}, {e1, e2, e3}),
     ({"g1": {e1, e2, e3}}, {"p1": {}}, {e1, e2, e3}),
-    # ({"g1": {e1}}, {"p1": {e3, e4}, "p2": {e2}}, {e1, e2, e3})
+    ({"g1": {e1}}, {"p1": {e3, e4}, "p2": {e2}}, {e1, e2, e3, e4}),
+    ({"g1": {e1, e2, e4}}, {"p1": {e4}}, {e1, e2, e4}),
     ])
-def test_merge_events(groups, projects, expected_events):
+def test_merge_events_success(groups, projects, expected_events):
     # with pytest.raises(Exception):
     result_events = merge_events(groups, projects)
     assert result_events == expected_events
 
 
+@pytest.mark.parametrize("groups,projects,expected_events", [
+    ({"g1": {e1, e2, e4}}, {"p1": {e5}}, {e1, e2, e4}),
+    ])
+def test_merge_events_double_event_url(groups, projects, expected_events):
+    """
+    problem with same urls at different events
+    """
+    result_events = merge_events(groups, projects)
+    assert result_events == expected_events
+
+
 @pytest.mark.parametrize("project_id,issue_id", [
-    (10064, 11)
+    (10064, 11),
+    (10064, 10),
+
     ])
 def test_create_event(project_id, issue_id):
+    gl = gitlab.Gitlab.from_config("dlr", config_files="gitlab-config.ini")
     project = gl.projects.get(project_id)
     issue = project.issues.get(issue_id)
-    event = create_event(issue, project)
-    assert project.name in event.name
-    assert event.categories == {"Issues"}
-    assert issue.description in event.description
+    if issue.due_date:
+        event = create_event(issue, project)
+        assert project.name in event.name
+        assert event.categories == {"Issues"}
+        assert issue.description in event.description
 
 # def test_create_calendar():
 #     cal = create_calendar()
