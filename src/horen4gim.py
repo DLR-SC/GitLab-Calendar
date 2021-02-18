@@ -32,7 +32,11 @@ def create_event(todo, instance):
     event = Event()
     # decision whether the todos are milestones or a issues
     if isinstance(todo, (GroupIssue, ProjectIssue)):
-        event.name = "[" + instance.name + "] " + todo.title + " (ISSUE)"
+        if isinstance(todo, GroupIssue):
+            project = GL.projects.get(todo.project_id)
+            event.name = "[" + project.name_with_namespace + "] " + todo.title + " (GROUP_ISSUE)"
+        else:
+            event.name = "[" + instance.name + "] " + todo.title + " (PROJECT_ISSUE)"
         event.begin = todo.due_date
         event.categories.add("Issues")
         if todo.milestone is None:
@@ -41,10 +45,14 @@ def create_event(todo, instance):
             event.description = "From Milestone: " + todo.milestone.get("title") +\
                                 "\n\n" + todo.description
     elif isinstance(todo, (GroupMilestone, ProjectMilestone)):
-        event.name = "[" + instance.name + "] " + todo.title + " (MILESTONE)"
+        if isinstance(todo, GroupMilestone):
+            event.name = "[" + instance.name + "] " + todo.title + " (GROUP_MILESTONE)"
+        else:
+            event.name = "[" + instance.name + "] " + todo.title + " (PROJECT_MILESTONE)"
         event.begin = todo.due_date
         event.categories.add("Milestones")
         event.description = todo.description
+
     event.location = todo.web_url
     event.make_all_day()
     print(" TITLE: ", todo.title, "\tDUE_DATE: ", todo.due_date)
@@ -52,6 +60,13 @@ def create_event(todo, instance):
 
 
 def merge_events(groups, projects):
+    """
+    creates a set that includes all events from all projects and groups
+    that are given
+    :param groups:
+    :param projects:
+    :return:
+    """
     all_events = set()
     all_events.update(*groups.values())
     for events in projects.values():
@@ -120,8 +135,14 @@ def convert_ids(id_string):
     """
     converts a string of given ids into a set of integer ids
     """
+    ids = set()
     if id_string != "":
-        return {int(pid) for pid in id_string.split(',')}
+        for pid in id_string.split(','):
+            try:
+                ids.add(int(pid))
+            except ValueError:
+                print("\"" + pid + "\" is not a valid id.")
+        return ids
     else:
         return set()
 
@@ -135,29 +156,42 @@ def converter(gila, project_ids=None, group_ids=None,
 
     path = Path(target_directory_path)
     os.makedirs(path, exist_ok=True)
-    if not path.exists():
-        raise FileNotFoundError("There is no valid target directory path")
+    print(path.absolute())
+
 
     # get issues and milestones from either projects or groups
     groups = {}
     projects = {}
-    try:
-        for project_id in project_ids:
-            project = gila.projects.get(project_id)
-            issue_events, milestone_events = filter_todos(project, only_issues, only_milestones)
-            events = issue_events.union(milestone_events)
-            projects[project.name] = events
-        for group_id in group_ids:
-            group = gila.groups.get(group_id)
-            issue_events, milestone_events = filter_todos(group, only_issues, only_milestones)
-            events = issue_events.union(milestone_events)
-            groups[group.name] = events
-    except TypeError as err:
-        print("No ID: ", err)
-        pass
-    # combined cal or many cals
 
-    if combined_calendar and combined_calendar != "False":
+    if project_ids == set() and group_ids == set():
+        print("No ID given ")
+    else:
+        try:
+            for ID in project_ids:
+                try:
+                    project = gila.projects.get(ID)
+                    issue_events, milestone_events = filter_todos(project, only_issues, only_milestones)
+                    events = issue_events.union(milestone_events)
+                    projects[project.name] = events
+                except gitlab.GitlabGetError as err:
+                    print(str(ID) + " is not existing or the access is denied, please check again", err)
+            for ID in group_ids:
+                try:
+                    group = gila.groups.get(ID)
+                    issue_events, milestone_events = filter_todos(group, only_issues, only_milestones)
+                    events = issue_events.union(milestone_events)
+                    groups[group.name] = events
+                except gitlab.GitlabGetError as err:
+                    print(str(ID) + " is not existing or the access is denied, please check again", err)
+                    pass
+        except TypeError as err:
+            print("No ID given : ", err)
+        except gitlab.GitlabHttpError as err:
+            print("Not found ", err)
+            pass
+
+    # combined cal or many cals
+    if combined_calendar:
         cal = create_calendar()
         all_events = merge_events(groups, projects)
         cal.events.update(all_events)
@@ -218,11 +252,11 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    gl = None
+    GL = None
     try:
         config = configparser.ConfigParser()
         config.read(args.config)
-        gl = gitlab.Gitlab.from_config("dlr", config_files=args.config)
+        GL = gitlab.Gitlab.from_config("dlr", config_files=args.config)
         args.groups = convert_ids(config.get('horen4gim', 'GITLAB_GROUP_ID'))
         args.projects = convert_ids(config.get('horen4gim', 'GITLAB_PROJECT_ID'))
         args.issues = bool(config.get('horen4gim', 'ISSUES'))
@@ -231,7 +265,7 @@ if __name__ == "__main__":
         args.directory = config.get('horen4gim', 'ABS_PATH')
     except TypeError as error:
         print("Config Missing", error)
-        gl = gitlab.Gitlab(args.url, private_token=args.token)
+        GL = gitlab.Gitlab(args.url, private_token=args.token)
     except configparser.NoSectionError as error:
         print("Section Missing", error)
     except configparser.NoOptionError as error:
@@ -239,9 +273,9 @@ if __name__ == "__main__":
     except configparser.DuplicateOptionError as error:
         print("Duplicate Option", error)
 
-    gl.auth()
+    GL.auth()
     try:
-        converter(gl, args.projects, args.groups, args.issues,
+        converter(GL, args.projects, args.groups, args.issues,
                   args.milestones, args.combine, args.directory)
     except ValueError:
         raise ValueError("No Value given.")
