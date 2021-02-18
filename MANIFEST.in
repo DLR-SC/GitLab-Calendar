@@ -1,0 +1,10 @@
+include src/horen4gim.py
+include README.md
+include Licences/
+include gitlab-config.ini.example
+include requirements.txt
+prune test/
+exclude .gitignore
+exclude .pytest_cache
+exclude gitlab-config.ini
+exclude Logo.png
