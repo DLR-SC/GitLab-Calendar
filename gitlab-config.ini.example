@@ -26,7 +26,9 @@ MILESTONES = True
 COMBINED_FILE = False
 
 # Please enter the absolute path of the directory, where you want to get your calendars created.
+# C:/Users/max_muster/Documents/events
 # The target directory doesn't have to exist before. It is going to be created through the process.
+# It also doesn't have to be in your working directory.
 # If you don't type in anything here, like:
 # ABS_PATH =
 # The calendars are going to be created in your working directory.
