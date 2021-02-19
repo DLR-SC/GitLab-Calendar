@@ -2,7 +2,7 @@
 Tool that generates ics-files from a repositories issues, milestones and iterations, which have a due date.
 
 ## Setup
-The script requires Python >= 3.9 and uses the libraries [ics](https://icspy.readthedocs.io/en/stable/) [LGPL v3.0](Licences/LGPLv3.0.txt) and [python-gitlab](https://python-gitlab.readthedocs.io/en/stable/) [Apache License v2.0.txt](Licenses/Apache%20License%20v2.0.txt)
+The script requires Python >= 3.9 and uses the libraries [ics](https://icspy.readthedocs.io/en/stable/) ([LGPL v3.0](Licenses/LGPLv3.0.txt)) and [python-gitlab](https://python-gitlab.readthedocs.io/en/stable/) ([Apache License v2.0.txt](Licenses/Apache%20License%20v2.0.txt))
 * Clone repository
 * Change into repository
 * install the [required dependencies](requirements.txt)

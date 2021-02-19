@@ -33,7 +33,7 @@ def create_event(todo, instance):
     # decision whether the todos are milestones or a issues
     if isinstance(todo, (GroupIssue, ProjectIssue)):
         if isinstance(todo, GroupIssue):
-            project = GL.projects.get(todo.project_id)
+            project = api.projects.get(todo.project_id)
             event.name = "[" + project.name_with_namespace + "] " + todo.title + " (GROUP_ISSUE)"
         else:
             event.name = "[" + instance.name + "] " + todo.title + " (PROJECT_ISSUE)"
@@ -112,7 +112,7 @@ def write_calendars(calendars, target_path):
                   "\" would be empty and is not going to be created")
 
 
-def filter_todos(instance, only_issues, only_milestones):
+def filter_events(instance, only_issues, only_milestones):
     """
     from an instance the todos that the user wants are going to be stored in
     sets as events.
@@ -120,13 +120,12 @@ def filter_todos(instance, only_issues, only_milestones):
     issue_events = set()
     milestone_events = set()
 
-    if (only_issues is False and only_milestones is False) or \
-            (only_issues is True and only_milestones is True):
+    if only_issues == only_milestones:
         issue_events = get_events(instance, instance.issues, {"state": "opened"})
         milestone_events = get_events(instance, instance.milestones, {"state": "active"})
     elif only_issues is True and only_milestones is False:
         issue_events = get_events(instance, instance.issues, {"state": "opened"})
-    elif only_issues is False and only_milestones is True:
+    else:
         milestone_events = get_events(instance, instance.milestones, {"state": "active"})
     return issue_events, milestone_events
 
@@ -144,7 +143,24 @@ def convert_ids(id_string):
                 print("\"" + pid + "\" is not a valid id.")
         return ids
     else:
-        return set()
+        return None
+
+
+def get_events_from_instances(gila, ids, id_type, only_issues, only_milestones):
+    instances = {}
+    for identification in ids:
+        try:
+            if id_type == "project":
+                instance = gila.projects.get(identification)
+            else:
+                instance = gila.groups.get(identification)
+
+            issue_events, milestone_events = filter_events(instance, only_issues, only_milestones)
+            events = issue_events.union(milestone_events)
+            instances[instance.name] = events
+        except gitlab.GitlabGetError as err:
+            print(str(identification) + " is not existing or the access is denied, please check again", err)
+    return instances
 
 
 def converter(gila, only_issues, only_milestones,
@@ -154,37 +170,18 @@ def converter(gila, only_issues, only_milestones,
     central function of the program
     """
 
-    print(only_issues, only_milestones)
-    print("1")
     path = Path(target_directory_path)
     os.makedirs(path, exist_ok=True)
-    print(path.absolute())
-
     # get issues and milestones from either projects or groups
     groups = {}
     projects = {}
-
-    if project_ids == set() and group_ids == set():
-        print("No ID given ")
+    print(project_ids, group_ids)
+    if project_ids is None and group_ids is None:
+        raise ValueError
     else:
         try:
-            for ID in project_ids:
-                try:
-                    project = gila.projects.get(ID)
-                    issue_events, milestone_events = filter_todos(project, only_issues, only_milestones)
-                    events = issue_events.union(milestone_events)
-                    projects[project.name] = events
-                except gitlab.GitlabGetError as err:
-                    print(str(ID) + " is not existing or the access is denied, please check again", err)
-            for ID in group_ids:
-                try:
-                    group = gila.groups.get(ID)
-                    issue_events, milestone_events = filter_todos(group, only_issues, only_milestones)
-                    events = issue_events.union(milestone_events)
-                    groups[group.name] = events
-                except gitlab.GitlabGetError as err:
-                    print(str(ID) + " is not existing or the access is denied, please check again", err)
-                    pass
+            projects = get_events_from_instances(gila, project_ids, "project", only_issues, only_milestones)
+            groups = get_events_from_instances(gila, group_ids, "group", only_issues, only_milestones)
         except TypeError as err:
             print("No ID given : ", err)
         except gitlab.GitlabHttpError as err:
@@ -218,7 +215,7 @@ def parse_arguments():
                              "you have to enter an url and authentication token manually",
                         type=str)
     parser.add_argument("-u", "--url",
-                        default="https://gitlab.dlr.de",
+
                         help="Url of the gitlab instance you want to get your data from",
                         type=str)
     parser.add_argument("-t", "--token",
@@ -253,30 +250,29 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    GL = None
-    try:
-        config = configparser.ConfigParser()
-        config.read(args.config)
-        GL = gitlab.Gitlab.from_config("dlr", config_files=args.config)
-        args.groups = convert_ids(config.get('horen4gim', 'GITLAB_GROUP_ID'))
-        args.projects = convert_ids(config.get('horen4gim', 'GITLAB_PROJECT_ID'))
-        args.issues = bool(config.get('horen4gim', 'ISSUES', fallback=False))
-        args.milestones = bool(config.get('horen4gim', 'MILESTONES', fallback=False))
-        args.combine = config.get('horen4gim', 'COMBINED_FILE', fallback="")
-        args.directory = config.get('horen4gim', 'ABS_PATH')
-    except TypeError as error:
-        print("Config Missing", error)
-        GL = gitlab.Gitlab(args.url, private_token=args.token)
-    except configparser.NoSectionError as error:
-        print("Section Missing", error)
-    except configparser.NoOptionError as error:
-        print("Option Missing", error)
-    except configparser.DuplicateOptionError as error:
-        print("Duplicate Option", error)
+    api = None
+    if args.config:
+        try:
+            config = configparser.ConfigParser()
+            config.read(args.config)
+            api = gitlab.Gitlab.from_config("horen4gim", config_files=args.config)
+            args.groups = convert_ids(config.get('horen4gim', 'GITLAB_GROUP_ID'))
+            args.projects = convert_ids(config.get('horen4gim', 'GITLAB_PROJECT_ID'))
+            args.issues = bool(config.get('horen4gim', 'ISSUES', fallback=False))
+            args.milestones = bool(config.get('horen4gim', 'MILESTONES', fallback=False))
+            args.combine = config.get('horen4gim', 'COMBINED_FILE', fallback="")
+            args.directory = config.get('horen4gim', 'ABS_PATH')
+        except TypeError as error:
+            print("Config Missing", error)
+        except configparser.NoSectionError as error:
+            print("Section Missing", error)
+        except configparser.NoOptionError as error:
+            print("Option Missing", error)
+        except configparser.DuplicateOptionError as error:
+            print("Duplicate Option", error)
+    else:
+        api = gitlab.Gitlab(args.url, private_token=args.token)
 
-    GL.auth()
-    try:
-        converter(GL, args.issues,args.milestones, args.projects,
-                  args.groups, args.combine, args.directory)
-    except ValueError:
-        raise ValueError("No Value given.")
+    api.auth()
+    converter(api, args.issues, args.milestones, args.projects,
+              args.groups, args.combine, args.directory)

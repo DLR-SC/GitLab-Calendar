@@ -5,7 +5,7 @@ import pytest
 from ics import Calendar, Event
 from pathlib import Path
 # from gitlab.v4.objects import Project, Group
-from horen4gim import merge_events, create_event, write_calendar, write_calendars, filter_todos
+from horen4gim import merge_events, create_event, write_calendar, write_calendars, filter_events
 
 gl = gitlab.Gitlab.from_config("dlr", config_files="gitlab-config.ini")
 e1 = Event(name="e1", location="url1", begin=datetime(2021, 1, 27, 11, 30))
@@ -86,7 +86,7 @@ def test_write_calendars(tmpdir, cals):
 
 
 def test_filter_todos_from_project():
-    issue_events, milestone_events = filter_todos(gl.projects.get(10064),
-                                                  True, True)
+    issue_events, milestone_events = filter_events(gl.projects.get(10064),
+                                                   True, True)
     assert issue_events != set()
     assert milestone_events != set()
