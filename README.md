@@ -1,4 +1,4 @@
-# Horen4GIM
+# GitCalendar
 Tool that generates ics-files from a repositories issues, milestones and iterations, which have a due date.
 
 ## Setup

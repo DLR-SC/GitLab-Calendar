@@ -257,13 +257,13 @@ def get_variables():
         try:
             config = configparser.ConfigParser()
             config.read(args.config)
-            api = gitlab.Gitlab.from_config("horen4gim", config_files=args.config)
-            args.groups = convert_ids(config.get('horen4gim', 'GITLAB_GROUP_ID'))
-            args.projects = convert_ids(config.get('horen4gim', 'GITLAB_PROJECT_ID'))
-            args.issues = bool(config.get('horen4gim', 'ISSUES', fallback=False))
-            args.milestones = bool(config.get('horen4gim', 'MILESTONES', fallback=False))
-            args.combine = config.get('horen4gim', 'COMBINED_FILE', fallback="")
-            args.directory = config.get('horen4gim', 'ABS_PATH')
+            api = gitlab.Gitlab.from_config("gitcalendar", config_files=args.config)
+            args.groups = convert_ids(config.get('gitcalendar', 'GITLAB_GROUP_ID'))
+            args.projects = convert_ids(config.get('gitcalendar', 'GITLAB_PROJECT_ID'))
+            args.issues = bool(config.get('gitcalendar', 'ISSUES', fallback=False))
+            args.milestones = bool(config.get('gitcalendar', 'MILESTONES', fallback=False))
+            args.combine = config.get('gitcalendar', 'COMBINED_FILE', fallback="")
+            args.directory = config.get('gitcalendar', 'ABS_PATH')
         except TypeError as error:
             print("Config Missing", error)
         except configparser.NoSectionError as error:

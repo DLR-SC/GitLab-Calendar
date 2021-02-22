@@ -2,9 +2,9 @@ import setuptools
 
 with open("README.md", "r", encoding="utf-8") as file:
     long_description = file.read()
-
+package = setuptools.find_packages()
 setuptools.setup(
-    name="horen4gim",
+    name="gitcalendar",
     version="0.1",
     author="Benjamin Moritz Bauer",
     author_email="benjamin.bauer@dlr.de",
@@ -13,10 +13,10 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="",
-    packages=setuptools.find_packages(),
+    packages=package,
     entry_points={
         'console_scripts': [
-            'gitcalendar = horen4gim:get_variables',
+            'gitcalendar = gitcalendar:get_variables',
         ],
     },
     classifiers=[

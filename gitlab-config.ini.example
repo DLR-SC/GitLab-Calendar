@@ -3,7 +3,7 @@ url = https://gitlab.dlr.de
 private_token = <your private token>
 api_version = 4
 
-[horen4gim]
+[gitcalendar]
 # You can enter either project ids or group ids (Separated from each other).
 # If you want more than one project, please make sure, that they are separated by commas.
 GITLAB_PROJECT_ID = <Project IDs>

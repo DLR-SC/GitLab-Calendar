@@ -5,6 +5,7 @@
 events/
 *.ini
 dist/
+gitcalendar.egg-info
 
 # pytest
 .pytest_cache/

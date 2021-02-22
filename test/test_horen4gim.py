@@ -5,7 +5,7 @@ import pytest
 from ics import Calendar, Event
 from pathlib import Path
 # from gitlab.v4.objects import Project, Group
-from horen4gim import merge_events, create_event, write_calendar, write_calendars, filter_events
+from gitcalendar.gitcalendar import merge_events, create_event, write_calendar, write_calendars, filter_events
 
 gl = gitlab.Gitlab.from_config("dlr", config_files="gitlab-config.ini")
 e1 = Event(name="e1", location="url1", begin=datetime(2021, 1, 27, 11, 30))
