@@ -1,11 +1,12 @@
+# project
+*.ini
+*.ics
+dist/
+gitcalendar.egg-info
+
 # pycharm
 .idea/
 
-# project
-events/
-*.ini
-dist/
-gitcalendar.egg-info
 
 # pytest
 .pytest_cache/
