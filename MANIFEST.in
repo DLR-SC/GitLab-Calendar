@@ -1,3 +1,9 @@
-include src/gitcalendar.py README.md Licences/ gitlab-config.ini.example requirements.txt
-exclude .gitignore .pytest_cache gitlab-config.ini Logo.png
-prune test/
+graft Licences* gitcalendar*
+include README.md gitlab-config.ini.example
+
+exclude .gitignore *.ini Logo.png requirements.txt
+
+prune test
+prune .pytest_cache*
+prune venv
+prune env

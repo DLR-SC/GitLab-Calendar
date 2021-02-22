@@ -16,12 +16,11 @@ setuptools.setup(
     packages=package,
     entry_points={
         'console_scripts': [
-            'gitcalendar = gitcalendar:get_variables',
+            'gitcalendar=gitcalendar.gitcalendar:get_variables',
         ],
     },
     classifiers=[
         "Programming Language :: Python :: 3.9",
-
     ],
     keywords='ics ical calendar icalendar gitlab api outlook issues milestones',
     python_requires='>=3.9',
