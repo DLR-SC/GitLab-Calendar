@@ -248,8 +248,10 @@ def parse_arguments():
     return arguments
 
 
-if __name__ == "__main__":
+def get_variables():
     args = parse_arguments()
+    # noinspection PyGlobalUndefined
+    global api
     api = None
     if args.config:
         try:
@@ -270,9 +272,15 @@ if __name__ == "__main__":
             print("Option Missing", error)
         except configparser.DuplicateOptionError as error:
             print("Duplicate Option", error)
-    else:
+    elif args.url and args.token:
         api = gitlab.Gitlab(args.url, private_token=args.token)
+    else:
+        print("Neither a config nor an url and a token are given.")
 
     api.auth()
     converter(api, args.issues, args.milestones, args.projects,
               args.groups, args.combine, args.directory)
+
+
+if __name__ == "__main__":
+    get_variables()
