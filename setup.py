@@ -14,6 +14,11 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="",
     packages=setuptools.find_packages(),
+    entry_points={
+        'console_scripts': [
+            'gitcalendar = horen4gim:get_variables',
+        ],
+    },
     classifiers=[
         "Programming Language :: Python :: 3.9",
 
