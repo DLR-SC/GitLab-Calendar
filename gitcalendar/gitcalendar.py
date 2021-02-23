@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2021 German Aerospace Center (DLR)
+#
+# SPDX-License-Identifier: MIT
+
 """
 Extension for GitLab, that generates ics-files from a repositories issues,
  milestones and iterations, which have a due date.

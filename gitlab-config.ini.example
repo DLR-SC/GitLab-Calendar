@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2021 German Aerospace Center (DLR)
+#
+# SPDX-License-Identifier: MIT
+
 [dlr]
 url = https://gitlab.dlr.de
 private_token = <your private token>
