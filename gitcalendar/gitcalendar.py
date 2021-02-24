@@ -179,7 +179,6 @@ def converter(gila, only_issues, only_milestones,
     # get issues and milestones from either projects or groups
     groups = {}
     projects = {}
-    print(project_ids, group_ids)
     if project_ids is None and group_ids is None:
         raise ValueError
     else:
