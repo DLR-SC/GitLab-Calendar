@@ -17,6 +17,8 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="",
+    license='MIT',
+
     packages=package,
     entry_points={
         'console_scripts': [
@@ -25,6 +27,7 @@ setuptools.setup(
     },
     classifiers=[
         "Programming Language :: Python :: 3.9",
+
     ],
     keywords='ics ical calendar icalendar gitlab api outlook issues milestones',
     python_requires='>=3.9',
