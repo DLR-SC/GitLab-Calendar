@@ -75,7 +75,6 @@ def create_event(todo, instance, reminder):
         event.alarms = [alarm]
     event.location = todo.web_url
     event.make_all_day()
-    print(" TITLE: ", todo.title, "\tDUE_DATE: ", todo.due_date)
     return event
 
 
@@ -226,8 +225,6 @@ def converter(gila, only_issues, only_milestones,
             calendars.append((cal, group))
         write_calendars(calendars, path)
 
-    print(reminder)
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -280,7 +277,7 @@ def get_variables():
     api = None
     if args.config:
         if Path(args.config).exists() is False:
-            raise ConfigPathError("No such Config")
+            raise ConfigPathError("No such Config in path \"" + args.config + "\"")
         try:
             config = configparser.ConfigParser()
             config.read(args.config)
@@ -303,8 +300,6 @@ def get_variables():
                 args.reminder = float(config.get('gitcalendar', 'REMINDER', fallback=0.0))
             except ValueError:
                 print("Wrong Value in section \"REMINDER\", it is now set to 0.0 by default")
-        except TypeError as error:
-            print("Config Missing", error)
         except configparser.NoSectionError as error:
             print("Section Missing", error)
         except configparser.NoOptionError as error:
@@ -316,9 +311,6 @@ def get_variables():
         api = gitlab.Gitlab(args.url, private_token=args.token)
     else:
         raise ConnectionError("Neither a config nor an url and a token are given.")
-
-    print("1" + str(args.projects))
-    print("2" + str(args.groups))
 
     api.auth()
     converter(api, args.issues, args.milestones,
