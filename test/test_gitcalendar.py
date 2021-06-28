@@ -3,16 +3,27 @@
 # SPDX-License-Identifier: MIT
 
 from datetime import datetime
+from unittest import mock
+from pathlib import Path
 
-import gitlab
 import pytest
 from ics import Calendar, Event
-from pathlib import Path
-# from gitlab.v4.objects import Project, Group
-from gitcalendar.gitcalendar import merge_events, create_event, write_calendar, write_calendars, filter_events, \
-    convert_ids
+from gitlab.v4.objects import Project, Group
+from gitlab.v4.objects import ProjectManager, GroupManager, IssueManager, GroupMilestoneManager, ProjectMilestoneManager
+from gitlab.v4.objects import ProjectIssue, ProjectMilestone, GroupIssue, GroupMilestone
 
-gl = gitlab.Gitlab.from_config("gitcalendar", config_files="gitlab-config.ini")
+from gitcalendar.gitcalendar import (
+    merge_events, create_event, filter_events,
+    write_calendar, write_calendars, convert_ids
+)
+
+p1 = mock.Mock(spec=Project, id=1337)
+
+i1 = mock.Mock(spec=ProjectIssue, title="I1", due_date=datetime(2021, 1, 27, 11, 30), web_url="https://example.org/i1")
+i2 = mock.Mock(spec=ProjectIssue, title="I2", due_date=datetime(2021, 1, 27, 11, 30), web_url="https://example.org/i2")
+i3 = mock.Mock(spec=ProjectIssue, title="I3", due_date=datetime(2021, 1, 27, 11, 30), web_url="https://example.org/i3")
+i4 = mock.Mock(spec=ProjectIssue, title="I4", due_date=datetime(2021, 1, 27, 11, 30), web_url="https://example.org/i4")
+
 e1 = Event(name="e1", location="url1", begin=datetime(2021, 1, 27, 11, 30))
 e2 = Event(name="e2", location="url2", begin=datetime(2021, 1, 27, 11, 30))
 e3 = Event(name="e3", location="url3", begin=datetime(2021, 1, 27, 11, 30))
@@ -48,32 +59,27 @@ def test_merge_events_double_event_url(groups, projects, expected_events):
     assert result_events == expected_events
 
 
-@pytest.mark.parametrize("project_id,issue_id", [
-    (10064, 11),
-    (10064, 10),
-
+@pytest.mark.skip("Needs mocking")
+@pytest.mark.parametrize("issue, project, expected_event", [
+    (i1, p1, e1),
+    (i2, p1, e2)
 ])
-def test_create_event(project_id, issue_id):
-    project = gl.projects.get(project_id)
-    issue = project.issues.get(issue_id)
-    if issue.due_date:
-        event = create_event(gl, issue, project, 0.0)
-        assert project.name in event.name
-        assert event.categories == {"Issues"}
-        assert issue.description in event.description
+def test_create_event(api, issue, project, expected_event):
+    project.name = "TestProject"
+    event = create_event(api, issue, project, 0.0)
+    assert project.name in event.name
 
 
 def test_write_calendar(tmpdir):
     cal = Calendar()
     date = datetime(2021, 1, 27, 11, 30)
-    event = Event(name='testevent',
-                  begin=date)
+    event = Event(name='test_event', begin=date)
     filename = str(tmpdir + 'test.ics')
     cal.events.add(event)
     write_calendar(cal, filename, "test.ics")
     with open(filename, 'r') as f:
         content = f.readlines()
-    assert 'testevent' in ''.join(content)
+    assert 'test_event' in ''.join(content)
 
 
 @pytest.mark.parametrize("cals", [
@@ -89,23 +95,24 @@ def test_write_calendars(tmpdir, cals):
     assert Path(str(p + "/cal3.ics")).exists() is False
 
 
-def test_filter_todos_from_project():
-    issue_events, milestone_events = filter_events(gl, gl.projects.get(10064),
-                                                   True, True, 0.0)
+@pytest.mark.skip("Needs mocking")
+def test_filter_todos_from_project(api):
+    issue_events, milestone_events = filter_events(api, api.projects.get(10064),
+                                                   only_issues=True, only_milestones=True, reminder=0.0)
     assert issue_events != set()
     assert milestone_events != set()
 
 
-@pytest.mark.parametrize("string", [
-    "10064,10074,hello",
-    "",
-    "1331,34424,31a2"
-
+@pytest.mark.parametrize("id_string,expected", [
+    ("10064,10074,hello", {10064, 10074}),
+    ("1331,34424,31a2", {1331, 34424}),
+    ("invalid;23,42", {42})
 ])
-def test_convert_ids(string):
-    ids = convert_ids(string)
-    if string:
-        for identification in ids:
-            assert str(identification) in string
-    else:
-        assert ids is None
+def test_convert_ids_success(id_string, expected):
+    ids = convert_ids(id_string)
+    assert ids == expected
+
+
+def test_convert_empty_ids():
+    ids = convert_ids("")
+    assert ids is None
