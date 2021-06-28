@@ -104,7 +104,7 @@ def test_filter_todos_from_project():
 ])
 def test_convert_ids(string):
     ids = convert_ids(string)
-    if string is not "":
+    if string:
         for identification in ids:
             assert str(identification) in string
     else:
