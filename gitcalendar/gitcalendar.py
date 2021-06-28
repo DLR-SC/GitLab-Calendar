@@ -4,7 +4,7 @@
 
 """
 Extension for GitLab, that generates ics-files from a repositories issues,
- milestones and iterations, which have a due date.
+milestones and iterations, which have a due date.
 """
 
 import argparse
@@ -33,9 +33,8 @@ class GitlabConnectionError(Exception):
 
 def get_events(api, instance, api_endpoints, filters, reminder):
     """
-    for each given terminated api_endpoint a calendar event is created
+    For each given terminated api_endpoint a calendar event is created
     """
-
     events = set()
     for item in api_endpoints.list(all=True, **filters):
         if item.due_date is not None:
@@ -46,25 +45,24 @@ def get_events(api, instance, api_endpoints, filters, reminder):
 
 def create_event(api, todo, instance, reminder):
     """
-    creates a new event and adds it to the calendar object
+    Creates a new event and adds it to the calendar object
     """
     event = Event()
     # decision whether the todos are milestones or a issues
     if isinstance(todo, (GroupIssue, ProjectIssue)):
         if isinstance(todo, GroupIssue):
             project = api.projects.get(todo.project_id)
-            event.name = todo.title + " (ISSUE) " + "[" + project.name_with_namespace + "]"
+            event.name = f"{todo.title} (ISSUE) [{project.name_with_namespace}]"
         else:
-            event.name = todo.title + " (ISSUE) " + "[" + instance.name + "]"
+            event.name = f"{todo.title} (ISSUE) [{instance.name}]"
         event.begin = todo.due_date
         event.categories.add("Issues")
         if todo.milestone is None:
             event.description = todo.description
         else:
-            event.description = "From Milestone: " + todo.milestone.get("title") + \
-                                "\n\n" + todo.description
+            event.description = f"From Milestone: {todo.milestone.get('title')}\n\n {todo.description}"
     elif isinstance(todo, (GroupMilestone, ProjectMilestone)):
-        event.name = todo.title + " (MILESTONE) " + "[" + instance.name + "]"
+        event.name = f"{todo.title} (MILESTONE) [{instance.name}]"
         event.begin = todo.due_date
         event.categories.add("Milestones")
         event.description = todo.description
@@ -78,11 +76,7 @@ def create_event(api, todo, instance, reminder):
 
 def merge_events(groups, projects):
     """
-    creates a set that includes all events from all projects and groups
-    that are given
-    :param groups:
-    :param projects:
-    :return:
+    Creates a set that includes all events from all projects and groups that are given
     """
     all_events = set()
     all_events.update(*groups.values())
@@ -100,7 +94,7 @@ def merge_events(groups, projects):
 
 def create_calendar():
     """
-    creates the calendar object
+    Creates the calendar object
     """
     cal = Calendar()
     return cal
@@ -108,31 +102,29 @@ def create_calendar():
 
 def write_calendar(calendar, file_path, name):
     """
-    writes a calendar-file from a given calendar object
+    Writes a calendar-file from a given calendar object
     """
 
     with open(file_path, 'w', encoding='utf-8') as file:
         file.writelines(calendar)
-    print("Successful creation of the file named \"" + name + "\".")
+    print(f"Successful creation of the file named {name}.")
 
 
 def write_calendars(calendars, target_path):
     """
-    calls the "write_calendar" function for each given project
+    Calls the "write_calendar" function for each given project
     """
     for calendar, name in calendars:
         name += ".ics"
         if calendar.events != set():
             write_calendar(calendar, target_path.joinpath(name), name)
         else:
-            print("The Calendar called \"" + name +
-                  "\" would be empty and is not going to be created")
+            print(f"The Calendar called {name} would be empty and is not going to be created.")
 
 
 def filter_events(api, instance, only_issues, only_milestones, reminder):
     """
-    from an instance the todos that the user wants are going to be stored in
-    sets as events.
+    From an instance the todos that the user wants are going to be stored in sets as events.
     """
     issue_events = set()
     milestone_events = set()
@@ -149,7 +141,7 @@ def filter_events(api, instance, only_issues, only_milestones, reminder):
 
 def convert_ids(id_string):
     """
-    converts a string of given ids into a set of integer ids
+    Converts a string of given ids into a set of integer ids
     """
     ids = set()
     if id_string != "":
@@ -157,13 +149,16 @@ def convert_ids(id_string):
             try:
                 ids.add(int(pid))
             except ValueError:
-                print("\"" + pid + "\" is not a valid id.", file=sys.stderr)
+                print(f"{pid} is not a valid id.", file=sys.stderr)
         return ids
     else:
         return None
 
 
 def get_events_from_instances(api, ids, id_type, only_issues, only_milestones, reminder):
+    """
+    Retrieve events from GitLab API
+    """
     instances = {}
 
     for identification in ids:
@@ -172,13 +167,11 @@ def get_events_from_instances(api, ids, id_type, only_issues, only_milestones, r
                 instance = api.projects.get(identification)
             else:
                 instance = api.groups.get(identification)
-
             issue_events, milestone_events = filter_events(api, instance, only_issues, only_milestones, reminder)
             events = issue_events.union(milestone_events)
             instances[instance.name] = events
         except gitlab.GitlabGetError as err:
-            print(str(identification) + " is not existing or the access is denied, "
-                                        "please check again.", err, file=sys.stderr)
+            print(f"{identification} is not existing or the access is denied, please check again.", err, file=sys.stderr)
     return instances
 
 
@@ -187,13 +180,14 @@ def converter(api, only_issues=True, only_milestones=True,
               project_ids=None, group_ids=None,
               combined_calendar="", target_directory_path="."):
     """
-    central function of the program
+    Converter function of the program
     """
     if group_ids is None and project_ids is None:
         raise NoGroupOrProjectError("There are no groups or projects given.")
 
     path = Path(target_directory_path)
     os.makedirs(path, exist_ok=True)
+
     # get issues and milestones from either projects or groups
     projects = {}
     groups = {}
@@ -203,10 +197,8 @@ def converter(api, only_issues=True, only_milestones=True,
     if group_ids:
         groups = get_events_from_instances(api, group_ids, "group",
                                            only_issues, only_milestones, reminder)
-    # except gitlab.GitlabHttpError as err:
-    # print("Not found ", err)
 
-    # combined cal or many cals
+    # combined calendar or multiple calendars
     if combined_calendar:
         cal = create_calendar()
         all_events = merge_events(groups, projects)
@@ -225,7 +217,10 @@ def converter(api, only_issues=True, only_milestones=True,
         write_calendars(calendars, path)
 
 
-def parse_arguments(parser):
+def configure_and_parse_arguments(parser):
+    """
+    Configure and Parse arguments
+    """
     parser.add_argument("--config",
                         default=None,
                         help="Path of your config. If you dont use a config, "
@@ -266,11 +261,14 @@ def parse_arguments(parser):
 
 
 def cli():
+    """
+    Commandline Interface
+    """
     parser = argparse.ArgumentParser()
-    args = parse_arguments(parser)
+    args = configure_and_parse_arguments(parser)
     if args.config:
         if Path(args.config).exists() is False:
-            raise ConfigPathError("No such Config in path \"" + args.config + "\"")
+            raise ConfigPathError(f"No such Config in path {args.config}")
         try:
             config = configparser.ConfigParser()
             config.read(args.config)
