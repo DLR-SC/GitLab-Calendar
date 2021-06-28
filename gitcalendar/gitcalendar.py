@@ -11,6 +11,7 @@ import os
 import sys
 import configparser
 import argparse
+import warnings
 from pathlib import Path
 import gitlab
 from gitlab.v4.objects import ProjectIssue, ProjectMilestone, GroupIssue, GroupMilestone
@@ -52,9 +53,9 @@ def create_event(todo, instance, reminder):
     if isinstance(todo, (GroupIssue, ProjectIssue)):
         if isinstance(todo, GroupIssue):
             project = api.projects.get(todo.project_id)
-            event.name = "[" + project.name_with_namespace + "] " + todo.title + " (GROUP_ISSUE)"
+            event.name = todo.title + " (ISSUE) " + "[" + project.name_with_namespace + "]"
         else:
-            event.name = "[" + instance.name + "] " + todo.title + " (PROJECT_ISSUE)"
+            event.name = todo.title + " (ISSUE) " + "[" + instance.name + "]"
         event.begin = todo.due_date
         event.categories.add("Issues")
         if todo.milestone is None:
@@ -63,10 +64,7 @@ def create_event(todo, instance, reminder):
             event.description = "From Milestone: " + todo.milestone.get("title") + \
                                 "\n\n" + todo.description
     elif isinstance(todo, (GroupMilestone, ProjectMilestone)):
-        if isinstance(todo, GroupMilestone):
-            event.name = "[" + instance.name + "] " + todo.title + " (GROUP_MILESTONE)"
-        else:
-            event.name = "[" + instance.name + "] " + todo.title + " (PROJECT_MILESTONE)"
+        event.name = todo.title + " (MILESTONE) " + "[" + instance.name + "]"
         event.begin = todo.due_date
         event.categories.add("Milestones")
         event.description = todo.description
@@ -159,7 +157,7 @@ def convert_ids(id_string):
             try:
                 ids.add(int(pid))
             except ValueError:
-                print("\"" + pid + "\" is not a valid id.")
+                print("\"" + pid + "\" is not a valid id.", file=sys.stderr)
         return ids
     else:
         return None
@@ -167,6 +165,7 @@ def convert_ids(id_string):
 
 def get_events_from_instances(gila, ids, id_type, only_issues, only_milestones, reminder):
     instances = {}
+
     for identification in ids:
         try:
             if id_type == "project":
@@ -178,34 +177,34 @@ def get_events_from_instances(gila, ids, id_type, only_issues, only_milestones, 
             events = issue_events.union(milestone_events)
             instances[instance.name] = events
         except gitlab.GitlabGetError as err:
-            print(str(identification) + " is not existing or the access is denied, please check again", err)
+            print(str(identification) + " is not existing or the access is denied, "
+                                        "please check again.", err, file=sys.stderr)
     return instances
 
 
-def converter(gila, only_issues, only_milestones,
-              reminder,
+def converter(gila, only_issues=True, only_milestones=True,
+              reminder=0.0,
               project_ids=None, group_ids=None,
               combined_calendar="", target_directory_path="."):
     """
     central function of the program
     """
+    if group_ids is None and project_ids is None:
+        raise NoGroupOrProjectError("There are no groups or projects given.")
 
     path = Path(target_directory_path)
     os.makedirs(path, exist_ok=True)
     # get issues and milestones from either projects or groups
-    groups = {}
     projects = {}
-
-    try:
+    groups = {}
+    if project_ids:
         projects = get_events_from_instances(gila, project_ids, "project",
                                              only_issues, only_milestones, reminder)
+    if group_ids:
         groups = get_events_from_instances(gila, group_ids, "group",
                                            only_issues, only_milestones, reminder)
-    except TypeError as err:
-        print("No ID given : ", err)
-    except gitlab.GitlabHttpError as err:
-        print("Not found ", err)
-        pass
+    # except gitlab.GitlabHttpError as err:
+    # print("Not found ", err)
 
     # combined cal or many cals
     if combined_calendar:
@@ -226,8 +225,7 @@ def converter(gila, only_issues, only_milestones,
         write_calendars(calendars, path)
 
 
-def parse_arguments():
-    parser = argparse.ArgumentParser()
+def parse_arguments(parser):
     parser.add_argument("--config",
                         default=None,
                         help="Path of your config. If you dont use a config, "
@@ -258,40 +256,37 @@ def parse_arguments():
                         help="Only milestones are noticed",
                         action="store_true")
     parser.add_argument("-c", "--combine",
-                        help="If you want to combine all files into one file,"
-                             " you should append this to your command and"
-                             "the wanted name of your file",
+                        help="Combines all events into one single calendar file",
                         type=str)
-    parser.add_argument("-r", "--reminder", default=0,
-                        help="If you want a reminder before an issue or milestone expires, "
-                             "feel free to use it. It is valid for days.",
-                        type=int)
+    parser.add_argument("-r", "--reminder", default=0.0,
+                        help="Sets a reminder. The timespan has to be given in a period of days",
+                        type=float)
     arguments = parser.parse_args()
     return arguments
 
 
-def get_variables():
-    args = parse_arguments()
-    # noinspection PyGlobalUndefined
+def get_important_data():
+    parser = argparse.ArgumentParser()
+    args = parse_arguments(parser)
     global api
     api = None
+    # noinspection PyGlobalUndefined
     if args.config:
         if Path(args.config).exists() is False:
             raise ConfigPathError("No such Config in path \"" + args.config + "\"")
         try:
             config = configparser.ConfigParser()
             config.read(args.config)
-            try:
-                api = gitlab.Gitlab.from_config("gitcalendar", config_files=args.config)
-            except gitlab.config.GitlabDataError:
-                raise GitlabConnectionError("The given config has no information "
-                                            "about connecting to gitlab")
 
             args.groups = convert_ids(config.get('gitcalendar', 'GITLAB_GROUP_ID', fallback=""))
             args.projects = convert_ids(config.get('gitcalendar', 'GITLAB_PROJECT_ID', fallback=""))
             if args.groups is None and args.projects is None:
-                raise NoGroupOrProjectError("There are no groups or projects given.")
-
+                print("There are no groups or projects given.", file=sys.stderr)
+                sys.exit(-1)
+            if args.groups is None:
+                print("No Group ID given.", file=sys.stderr)
+            elif args.projects is None:
+                print("No Project ID given.", file=sys.stderr)
             args.issues = bool(config.get('gitcalendar', 'ISSUES', fallback=False))
             args.milestones = bool(config.get('gitcalendar', 'MILESTONES', fallback=False))
             args.combine = config.get('gitcalendar', 'COMBINED_FILE', fallback="")
@@ -302,21 +297,37 @@ def get_variables():
                 print("Wrong Value in section \"REMINDER\", it is now set to 0.0 by default")
         except configparser.NoSectionError as error:
             print("Section Missing", error)
+            sys.exit(-1)
         except configparser.NoOptionError as error:
             print("Option Missing:", error)
+            sys.exit(-1)
         except configparser.DuplicateOptionError as error:
             print("Duplicate Option:", error)
             sys.exit(-1)
-    elif args.url and args.token:
-        api = gitlab.Gitlab(args.url, private_token=args.token)
     else:
-        raise ConnectionError("Neither a config nor an url and a token are given.")
+        print("Neither a config nor an url and a token are given.", file=sys.stderr)
+        parser.print_usage()
+        sys.exit(-1)
+    try:
+        if args.config:
+            api = gitlab.Gitlab.from_config("gitcalendar", config_files=args.config)
+        else:
+            api = gitlab.Gitlab(args.url, private_token=args.token)
+    except gitlab.config.GitlabDataError:
+        print("Can't connect to GitLab from the given data", file=sys.stderr)
+        sys.exit(-1)
 
     api.auth()
-    converter(api, args.issues, args.milestones,
-              args.reminder, args.projects,
-              args.groups, args.combine, args.directory)
+
+    try:
+        converter(api, args.issues, args.milestones,
+                  args.reminder, args.projects,
+                  args.groups, args.combine, args.directory)
+    except TypeError:
+        raise TypeError
+    except gitlab.GitlabHttpError:
+        raise NoGroupOrProjectError("Group/Project does not exist")
 
 
 if __name__ == "__main__":
-    get_variables()
+    get_important_data()
