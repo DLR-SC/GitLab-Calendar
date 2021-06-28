@@ -4,9 +4,13 @@
 
 import setuptools
 
-with open("README.md", "r", encoding="utf-8") as file:
-    long_description = file.read()
+# with open("README.md", "r", encoding="utf-8") as file:
+#    long_description = file.read()
 
+INSTALL_REQUIRES = [
+    "python-gitlab >= 2.5.0",
+    "ics >= 0.7",
+]
 package = setuptools.find_packages()
 
 setuptools.setup(
@@ -17,21 +21,22 @@ setuptools.setup(
     maintainer="Deutsches Zentrum fuer Luft- und Raumfahrt e.V. (DLR)",
     description="Tool that generates ics-files from a repositories issues,"
                 " milestones and iterations, which have a due date.",
-    long_description=long_description,
+    long_description="",
     long_description_content_type="text/markdown",
     url="https://github.com/DLR-SC/gitcalendar",
     license='License :: MIT',
     packages=package,
     entry_points={
         'console_scripts': [
-            'gitcalendar=gitcalendar.gitcalendar:get_variables',
+            'gitcalendar=gitcalendar.gitcalendar:get_important_data',
         ],
     },
     classifiers=[
         "Development Status :: 1 - Alpha"
-        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.6.8",
 
     ],
     keywords='ics ical calendar icalendar gitlab api outlook issues milestones',
-    python_requires='>=3.9',
+    install_requires=INSTALL_REQUIRES,
+
 )
