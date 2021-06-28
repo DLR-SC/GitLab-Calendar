@@ -7,16 +7,16 @@ Extension for GitLab, that generates ics-files from a repositories issues,
  milestones and iterations, which have a due date.
 """
 
+import argparse
+import configparser
 import os
 import sys
-import configparser
-import argparse
-import warnings
+from datetime import timedelta
 from pathlib import Path
+
 import gitlab
 from gitlab.v4.objects import ProjectIssue, ProjectMilestone, GroupIssue, GroupMilestone
 from ics import Calendar, Event, DisplayAlarm
-from datetime import timedelta
 
 
 class ConfigPathError(Exception):
@@ -31,7 +31,7 @@ class GitlabConnectionError(Exception):
     pass
 
 
-def get_events(instance, api_endpoints, filters, reminder):
+def get_events(api, instance, api_endpoints, filters, reminder):
     """
     for each given terminated api_endpoint a calendar event is created
     """
@@ -39,12 +39,12 @@ def get_events(instance, api_endpoints, filters, reminder):
     events = set()
     for item in api_endpoints.list(all=True, **filters):
         if item.due_date is not None:
-            event = create_event(item, instance, reminder)
+            event = create_event(api, item, instance, reminder)
             events.add(event)
     return events
 
 
-def create_event(todo, instance, reminder):
+def create_event(api, todo, instance, reminder):
     """
     creates a new event and adds it to the calendar object
     """
@@ -129,7 +129,7 @@ def write_calendars(calendars, target_path):
                   "\" would be empty and is not going to be created")
 
 
-def filter_events(instance, only_issues, only_milestones, reminder):
+def filter_events(api, instance, only_issues, only_milestones, reminder):
     """
     from an instance the todos that the user wants are going to be stored in
     sets as events.
@@ -138,12 +138,12 @@ def filter_events(instance, only_issues, only_milestones, reminder):
     milestone_events = set()
 
     if only_issues == only_milestones:
-        issue_events = get_events(instance, instance.issues, {"state": "opened"}, reminder)
-        milestone_events = get_events(instance, instance.milestones, {"state": "active"}, reminder)
+        issue_events = get_events(api, instance, instance.issues, {"state": "opened"}, reminder)
+        milestone_events = get_events(api, instance, instance.milestones, {"state": "active"}, reminder)
     elif only_issues is True and only_milestones is False:
-        issue_events = get_events(instance, instance.issues, {"state": "opened"}, reminder)
+        issue_events = get_events(api, instance, instance.issues, {"state": "opened"}, reminder)
     else:
-        milestone_events = get_events(instance, instance.milestones, {"state": "active"}, reminder)
+        milestone_events = get_events(api, instance, instance.milestones, {"state": "active"}, reminder)
     return issue_events, milestone_events
 
 
@@ -163,17 +163,17 @@ def convert_ids(id_string):
         return None
 
 
-def get_events_from_instances(gila, ids, id_type, only_issues, only_milestones, reminder):
+def get_events_from_instances(api, ids, id_type, only_issues, only_milestones, reminder):
     instances = {}
 
     for identification in ids:
         try:
             if id_type == "project":
-                instance = gila.projects.get(identification)
+                instance = api.projects.get(identification)
             else:
-                instance = gila.groups.get(identification)
+                instance = api.groups.get(identification)
 
-            issue_events, milestone_events = filter_events(instance, only_issues, only_milestones, reminder)
+            issue_events, milestone_events = filter_events(api, instance, only_issues, only_milestones, reminder)
             events = issue_events.union(milestone_events)
             instances[instance.name] = events
         except gitlab.GitlabGetError as err:
@@ -182,7 +182,7 @@ def get_events_from_instances(gila, ids, id_type, only_issues, only_milestones, 
     return instances
 
 
-def converter(gila, only_issues=True, only_milestones=True,
+def converter(api, only_issues=True, only_milestones=True,
               reminder=0.0,
               project_ids=None, group_ids=None,
               combined_calendar="", target_directory_path="."):
@@ -198,10 +198,10 @@ def converter(gila, only_issues=True, only_milestones=True,
     projects = {}
     groups = {}
     if project_ids:
-        projects = get_events_from_instances(gila, project_ids, "project",
+        projects = get_events_from_instances(api, project_ids, "project",
                                              only_issues, only_milestones, reminder)
     if group_ids:
-        groups = get_events_from_instances(gila, group_ids, "group",
+        groups = get_events_from_instances(api, group_ids, "group",
                                            only_issues, only_milestones, reminder)
     # except gitlab.GitlabHttpError as err:
     # print("Not found ", err)
@@ -265,12 +265,9 @@ def parse_arguments(parser):
     return arguments
 
 
-def get_important_data():
+def cli():
     parser = argparse.ArgumentParser()
     args = parse_arguments(parser)
-    global api
-    api = None
-    # noinspection PyGlobalUndefined
     if args.config:
         if Path(args.config).exists() is False:
             raise ConfigPathError("No such Config in path \"" + args.config + "\"")
@@ -330,4 +327,4 @@ def get_important_data():
 
 
 if __name__ == "__main__":
-    get_important_data()
+    cli()

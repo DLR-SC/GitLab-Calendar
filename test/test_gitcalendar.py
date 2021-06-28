@@ -9,9 +9,10 @@ import pytest
 from ics import Calendar, Event
 from pathlib import Path
 # from gitlab.v4.objects import Project, Group
-from gitcalendar.gitcalendar import merge_events, create_event, write_calendar, write_calendars, filter_events
+from gitcalendar.gitcalendar import merge_events, create_event, write_calendar, write_calendars, filter_events, \
+    convert_ids
 
-gl = gitlab.Gitlab.from_config("dlr", config_files="gitlab-config.ini")
+gl = gitlab.Gitlab.from_config("gitcalendar", config_files="gitlab-config.ini")
 e1 = Event(name="e1", location="url1", begin=datetime(2021, 1, 27, 11, 30))
 e2 = Event(name="e2", location="url2", begin=datetime(2021, 1, 27, 11, 30))
 e3 = Event(name="e3", location="url3", begin=datetime(2021, 1, 27, 11, 30))
@@ -29,7 +30,7 @@ calendars = [(cal1, "cal1"), (cal2, "cal2"), (cal3, "cal3")]
     ({"g1": {e1, e2, e3}}, {"p1": {}}, {e1, e2, e3}),
     ({"g1": {e1}}, {"p1": {e3, e4}, "p2": {e2}}, {e1, e2, e3, e4}),
     ({"g1": {e1, e2, e4}}, {"p1": {e4}}, {e1, e2, e4}),
-    ])
+])
 def test_merge_events_success(groups, projects, expected_events):
     # with pytest.raises(Exception):
     result_events = merge_events(groups, projects)
@@ -38,7 +39,7 @@ def test_merge_events_success(groups, projects, expected_events):
 
 @pytest.mark.parametrize("groups,projects,expected_events", [
     ({"g1": {e1, e2, e4}}, {"p1": {e5}}, {e1, e2, e4}),
-    ])
+])
 def test_merge_events_double_event_url(groups, projects, expected_events):
     """
     problem with same urls at different events
@@ -51,13 +52,12 @@ def test_merge_events_double_event_url(groups, projects, expected_events):
     (10064, 11),
     (10064, 10),
 
-    ])
+])
 def test_create_event(project_id, issue_id):
-
     project = gl.projects.get(project_id)
     issue = project.issues.get(issue_id)
     if issue.due_date:
-        event = create_event(issue, project)
+        event = create_event(issue, project, 0.0)
         assert project.name in event.name
         assert event.categories == {"Issues"}
         assert issue.description in event.description
@@ -91,6 +91,21 @@ def test_write_calendars(tmpdir, cals):
 
 def test_filter_todos_from_project():
     issue_events, milestone_events = filter_events(gl.projects.get(10064),
-                                                   True, True)
+                                                   True, True, 0.0)
     assert issue_events != set()
     assert milestone_events != set()
+
+
+@pytest.mark.parametrize("string", [
+    "10064,10074,hello",
+    "",
+    "1331,34424,31a2"
+
+])
+def test_convert_ids(string):
+    ids = convert_ids(string)
+    if string is not "":
+        for id in ids:
+            assert str(id) in string
+    else:
+        assert ids == None

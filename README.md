@@ -5,60 +5,68 @@ SPDX-License-Identifier: MIT
 -->
 
 # GitCalendar
-Tool that generates ics-files from a repositories issues, milestones and iterations, which have a due date.
+Tool that generates an ICS file from issues, milestones and iterations, of one or more GitLab projects. 
+Only events with a due date are considered.
 
 ## Setup
-The script requires Python >= 3.9 and uses the libraries [ics](https://icspy.readthedocs.io/en/stable/) ([LGPL v3.0](LICENSES/LGPL-3.0-only.txt)) and [python-gitlab](https://python-gitlab.readthedocs.io/en/stable/) ([Apache License v2.0.txt](LICENSES/Apache-2.0.txt))
+The script requires Python >= 3.6 and uses the libraries [ics](https://icspy.readthedocs.io/en/stable/) ([LGPL v3.0](LICENSES/LGPL-3.0-only.txt)) and
+[python-gitlab](https://python-gitlab.readthedocs.io/en/stable/) ([Apache License v2.0](LICENSES/Apache-2.0.txt)).
+You can install it from [PyPi](https://pypi.org/) with the following command:
 
-### Setup from GitLab
-* Clone repository
-* Change into repository
-* install the [required dependencies](requirements.txt)
-
-```
-git clone ...
-cd gitcalendar
-python setup.py sdist
-pip install dist/gitcalendar-0.1.tar.gz 
-```
-
-### Setup from [PyPi](https://pypi.org/)
-
-```
+```shell
 pip install gitcalendar
 ```
 
 ## Usage
 There are two options of running the script:
-### 1 Run it with a config 
+
+### Run it with a config 
 * Rename [gitlab-config.ini.example](gitlab-config.ini.example) to `gitlab-config.ini` and fit to your needs 
 * Make sure that all wanted variables are given
-
-```
-ren gitlab-config.ini.example gitlab-config.ini
-```
-
 * Make sure to declare your private token, a valid project or group id, and the path where your calendar files should be generated at.
-* Once this is done, you can run the script as follows:
+ 
+Once this is done, you can run the script as follows:
 
-```
+```shell
 gitcalendar --config <PATH OF YOUR CONFIG>    
 ```
 
-### 2 Run it with all the options you need
-**Warning! Please consider using the config in first case for not leaking any access tokens**
+### Run it with all the options you need
+**Warning! Please consider using the prior option for not leaking any access tokens**
 * Here, there's a need to declare the url of the gitlab instance, your private token, and at least one project or group id.
 
-```
+```shell
 gitcalendar -u <URL> -t <PRIVATE TOKEN> -p <LIST OF PROJECT IDS> -g <LIST OF GROUP IDS>    
 ```
 
-* For more options please use:
+For more options please use:
 
-```
+```shell
 gitcalendar -h
 ```
 
+## Development
+After you cloned the repository and changed into it, you can
+perform the following actions. 
+
+### Setup
+
+Install with pip as follows:
+
+```shell
+pip install -e .[develop]
+```
+
+### Package Build
+You can build a source package with the following command:
+```shell
+python setup.py sdist
+```
+
+You can build a wheel with the following command:
+```shell
+python setup.py bdist
+```
 ## Contributors
 
 Here you find the main contributors to the material:

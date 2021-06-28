@@ -5,7 +5,7 @@
 graft Licences* gitcalendar*
 include README.md gitlab-config.ini.example
 
-exclude .gitignore *.ini Logo.png requirements.txt
+exclude .gitignore *.ini
 
 prune test
 prune .pytest_cache*
