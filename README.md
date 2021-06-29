@@ -76,5 +76,5 @@ Here you find the main contributors to the material:
 
 ## License
 
-Please see the folder [LICENSES](LICENSES) for further information about how the content is licensed.
+Please see [LICENSE.md](LICENSE.md) for further information about how the content is licensed.
 
