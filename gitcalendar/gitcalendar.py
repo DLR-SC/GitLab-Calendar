@@ -171,7 +171,8 @@ def get_events_from_instances(api, ids, id_type, only_issues, only_milestones, r
             events = issue_events.union(milestone_events)
             instances[instance.name] = events
         except gitlab.GitlabGetError as err:
-            print(f"{identification} is not existing or the access is denied, please check again.", err, file=sys.stderr)
+            print(f"{identification} is not existing or the access is denied, please check again.",
+                  err, file=sys.stderr)
     return instances
 
 
