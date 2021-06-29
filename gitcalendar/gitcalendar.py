@@ -265,6 +265,7 @@ def cli():
     """
     Commandline Interface
     """
+    print("This tool uses the library python-gitlab which is licensed under LGPL v3.0.")
     parser = argparse.ArgumentParser()
     args = configure_and_parse_arguments(parser)
     if args.config:

@@ -9,8 +9,8 @@ Tool that generates an ICS file from issues, milestones and iterations, of one o
 Only events with a due date are considered.
 
 ## Setup
-The script requires Python >= 3.6 and uses the libraries [ics](https://icspy.readthedocs.io/en/stable/) ([LGPL v3.0](LICENSES/LGPL-3.0-only.txt)) and
-[python-gitlab](https://python-gitlab.readthedocs.io/en/stable/) ([Apache License v2.0](LICENSES/Apache-2.0.txt)).
+The script requires Python >= 3.6 and uses the libraries [ics](https://icspy.readthedocs.io/en/stable/) ([Apache License v2.0](LICENSES/Apache-2.0.txt)) and
+[python-gitlab](https://python-gitlab.readthedocs.io/en/stable/) ([LGPL v3.0](LICENSES/LGPL-3.0-only.txt)).
 You can install it from [PyPi](https://pypi.org/) with the following command:
 
 ```shell
