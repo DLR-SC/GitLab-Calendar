@@ -47,7 +47,13 @@ setuptools.setup(
         "Programming Language :: Python :: 3.6.8",
 
     ],
-    keywords='ics ical calendar icalendar gitlab api outlook issues milestones',
+    keywords=[
+        'ics',
+        'ical',
+        'calendar',
+        'icalendar',
+        'gitlab',
+    ],
     python_requires=">=3.6",
     install_requires=INSTALL_REQUIRES,
     tests_require=TESTS_REQUIRE,
