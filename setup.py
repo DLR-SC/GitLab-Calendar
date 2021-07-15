@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 import setuptools
+import pathlib
 
 INSTALL_REQUIRES = [
     "python-gitlab >= 2.5.0",
@@ -26,15 +27,20 @@ EXTRAS_REQUIRE = {
 
 package = setuptools.find_packages()
 
+HERE = pathlib.Path(__file__).parent
+README = (HERE / "README.md").read_text()
+
 setuptools.setup(
     name="gitcalendar",
-    version="0.1",
+    version="0.9",
     author="Benjamin Moritz Bauer",
     author_email="benjamin.bauer@dlr.de",
     maintainer="Deutsches Zentrum fuer Luft- und Raumfahrt e.V. (DLR)",
     description="Tool that generates ics-files from a repositories issues,"
                 " milestones and iterations, which have a due date.",
-    url="https://github.com/DLR-SC/gitcalendar",
+    long_description=README,
+    long_description_content_type='text/markdown',
+    url="https://gitlab.com/dlr-sc/gitcalendar",
     license='License :: MIT',
     packages=package,
     entry_points={
@@ -43,7 +49,7 @@ setuptools.setup(
         ],
     },
     classifiers=[
-        "Development Status :: 1 - Alpha"
+        "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3.6.8",
 
     ],
