@@ -30,10 +30,11 @@ Build process:
     - gitcalendar --help
   tags:
     - docker
+  only:
+    - main
   artifacts:
     expose_as: "Packages"
     paths:
-      - build
       - dist
 
 Publish on PyPi:
@@ -43,7 +44,7 @@ Publish on PyPi:
     - echo publish
   tags:
     - docker
-#  when: manual
-#  only:
-#      - main
+  when: manual
+  only:
+      - main
 
