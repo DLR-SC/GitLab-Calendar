@@ -13,6 +13,7 @@ INSTALL_REQUIRES = [
 DEVELOP_REQUIRES = [
     "reuse>=0.12.1",
     "wheel",
+    "twine",
 ]
 
 TESTS_REQUIRE = [

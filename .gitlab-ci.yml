@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2021 German Aerospace Center (DLR)
+#
+# SPDX-License-Identifier: MIT
+
+
+stages:
+  - test
+  - build
+  - publish
+
+Test process:
+  stage: test
+  image: python:3.6.8
+  script:
+    - pip install -e ".[test]"
+    - pytest test/
+  tags:
+    - docker
+
+Build process:
+  stage: build
+  image: python:3.6.8
+  script:
+    - pip install twine
+    - VERSION=$(grep "__version__" gitcalendar/__init__.py | cut -d" " -f3 | cut -d'"' -f2)
+    - echo "Create package for version ${VERSION}"
+    - python setup.py sdist bdist
+    - twine check --strict dist/*
+    - pip install dist/gitcalendar-${VERSION}.tar.gz
+    - gitcalendar --help
+  tags:
+    - docker
+  only:
+    - main
+  artifacts:
+    expose_as: "Packages"
+    paths:
+      - dist
+
+Publish on PyPi:
+  stage: publish
+  image: python:3.6.8
+  script:
+    - pip install twine
+    - VERSION=$(grep "__version__" gitcalendar/__init__.py | cut -d" " -f3 | cut -d'"' -f2)
+    - twine upload dist/gitcalendar-${VERSION}.tar.gz
+  tags:
+    - docker
+  when: manual
+  only:
+      - main
