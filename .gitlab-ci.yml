@@ -8,6 +8,15 @@ stages:
   - build
   - publish
 
+Test process:
+  stage: test
+  image: python:3.6.8
+  script:
+    - pip install -e ".[test]"
+    - pytest test/
+  tags:
+    - docker
+
 Build process:
   stage: build
   image: python:3.6.8
@@ -27,15 +36,14 @@ Build process:
       - build
       - dist
 
-
-
-#  """Publish on PyPi:
-#  stage: publish
-#  image: python:3.6.8
-#  script:
-#
+Publish on PyPi:
+  stage: publish
+  image: python:3.6.8
+  script:
+    - echo publish
+  tags:
+    - docker
 #  when: manual
 #  only:
 #      - main
-#
-#  """
+
