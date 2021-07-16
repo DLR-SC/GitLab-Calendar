@@ -41,10 +41,11 @@ Publish on PyPi:
   stage: publish
   image: python:3.6.8
   script:
-    - echo publish
+    - pip install twine
+    - VERSION=$(grep "__version__" gitcalendar/__init__.py | cut -d" " -f3 | cut -d'"' -f2)
+    - twine upload dist/gitcalendar-${VERSION}.tar.gz
   tags:
     - docker
   when: manual
   only:
       - main
-
