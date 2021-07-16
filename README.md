@@ -67,12 +67,18 @@ You can build a wheel with the following command:
 ```shell
 python setup.py bdist
 ```
+
+## Changes
+
+Please see the [CHANGELOG.md](CHANGELOG.md) for notable changes.
+
+## Contributing
+
+Please see the [CONTRIBUTING.md](CONTRIBUTING.md) if you want to contribute.
+
 ## Contributors
 
-Here you find the main contributors to the material:
-
-- Benjamin Bauer
-- Martin Stoffers
+Please see [CONTRIBUTORS.md](CONTRIBUTORS.md) for further information about the contributors.
 
 ## License
 
