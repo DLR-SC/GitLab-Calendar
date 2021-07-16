@@ -33,7 +33,7 @@ README = (HERE / "README.md").read_text()
 
 setuptools.setup(
     name="gitcalendar",
-    version="0.9",
+    version="1.0.0",
     author="Benjamin Moritz Bauer",
     author_email="benjamin.bauer@dlr.de",
     maintainer="Deutsches Zentrum fuer Luft- und Raumfahrt e.V. (DLR)",
@@ -50,9 +50,11 @@ setuptools.setup(
         ],
     },
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3.6",
-
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     keywords=[
         'ics',

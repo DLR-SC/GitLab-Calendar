@@ -6,4 +6,4 @@
 __author__ = "Benjamin Moritz Bauer"
 __copyright__ = "Copyright 2021, German Aerospace Center (DLR)"
 __license__ = "MIT"
-__version__ = "0.9"
+__version__ = "1.0.0"
