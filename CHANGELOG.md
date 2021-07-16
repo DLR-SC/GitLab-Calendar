@@ -17,11 +17,9 @@ The release 1.0.0 of GitCalendar marks a stable version.
 
 ### Features
 
-GitCalendar gets ICS files of events with a due date from GitLabs projects / groups 
-- possible configuration either by config file or URL and token
-- optional arguments:
-    - directory where the ICS files should be created 
-    - list of projects / groups
-    - only issues / milestones
-    - one combined file of all projects / groups
-    - reminder
+GitCalendar generates ICS files from events in GitLabs projects and groups which have a due date.
+Functionalities:
+- Calendar events from projects and groups
+- Combined calendars
+- Limiting to milestones or issues
+- Automatic reminder at due date
