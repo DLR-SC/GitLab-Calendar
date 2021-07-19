@@ -6,7 +6,7 @@
 
 # To connect to GitLab, the api needs the url and your personal access token.
 # Make sure to secure your token, that no other person can get it.
-URL = https://gitlab.dlr.de
+URL = https://gitlab.com
 PRIVATE_TOKEN = <your private token>
 api_version = 4
 
